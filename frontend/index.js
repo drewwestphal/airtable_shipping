@@ -7,6 +7,8 @@ import {
   ViewportConstraint,
   useRecords,
   Box,
+  FormField,
+  Button,
   RecordCardList,
   ConfirmationDialog,
   expandRecord,
@@ -71,7 +73,6 @@ function JoCoShipping () {
     <div>
       <ViewportConstraint minSize={{ width: 800 }} />
 
-      <h2>Search by Tracking Number</h2>
       {searchBox}
       {mustReceive.length > 0 && searchString.trim().length > 0 ? (
         <div>
@@ -97,13 +98,15 @@ function JoCoShipping () {
 
 const SearchBox = (searchString, setSearchString) => {
   return (
-    <Input
-      value={searchString}
-      onChange={e => setSearchString(e.target.value)}
-      placeholder='Search...'
-      size='large'
-      width='320px'
-    />
+    <FormField label='Tracking Number Search'>
+      <Input
+        value={searchString}
+        onChange={e => setSearchString(e.target.value)}
+        placeholder='Search...'
+        size='large'
+        width='320px'
+      />
+    </FormField>
   )
 }
 
@@ -198,6 +201,8 @@ function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
     return queryRes.records
   })
 
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
   return (
     <Box height='450px' border='thick' backgroundColor='lightGray1'>
       <h2>Unreceived SKUOrders</h2>
@@ -214,21 +219,61 @@ function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
         </thead>
         <tbody>
           {skuOrders.map(rec => {
-            var dest = ''
-            var sku = ''
+            const skuName = rec.getCellValue(skuOrderSKUNameField)
+            const expectQty = rec.getCellValue(skuOrderQuantityField)
+            const destPrefix = rec.getCellValue(skuOrderDestNameField)
+
+            const canReceive =
+              skuName &&
+              skuName.trim().length > 0 &&
+              expectQty &&
+              expectQty > 0 &&
+              destPrefix &&
+              destPrefix.trim().length > 0
+
             return (
               <tr>
-                <td>{rec.getCellValue(skuOrderSKUNameField)}</td>
-                <td>{rec.getCellValue(skuOrderExternalProductName)}</td>
-                <td>{rec.getCellValue(skuOrderQuantityField)}</td>
-                <td>{rec.getCellValue(skuOrderDestNameField)}</td>
-                <td></td>
+                <td style={{ padding: '5px' }}>{skuName}</td>
+                <td style={{ padding: '5px' }}>
+                  {rec.getCellValue(skuOrderExternalProductName)}
+                </td>
+                <td style={{ padding: '5px' }}>{expectQty}</td>
+                <td style={{ padding: '5px' }}>{destPrefix}</td>
+                <td style={{ padding: '5px' }}>
+                  <Button
+                    onClick={() => setIsDialogOpen(true)}
+                    variant='primary'
+                    icon='edit'
+                    disabled={!canReceive}
+                  >
+                    Receive {skuName}
+                  </Button>
+                  {isDialogOpen &&
+                    ReceiveSKUOrderDialogue({
+                      isDialogOpen: isDialogOpen,
+                      setIsDialogOpen: setIsDialogOpen,
+                      skuName: skuName
+                    })}
+                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
     </Box>
+  )
+}
+
+function ReceiveSKUOrderDialogue ({ setIsDialogOpen, skuName }) {
+  return (
+    <ConfirmationDialog
+      title={'Receiving ' + skuName}
+      body='This action can’t be undone.'
+      onConfirm={() => {
+        setIsDialogOpen(false)
+      }}
+      onCancel={() => setIsDialogOpen(false)}
+    />
   )
 }
 
