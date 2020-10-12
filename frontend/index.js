@@ -201,7 +201,7 @@ function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
     return queryRes.records
   })
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [whichDialogue, setWhichDialogue] = useState(false)
 
   return (
     <Box height='450px' border='thick' backgroundColor='lightGray1'>
@@ -241,17 +241,16 @@ function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
                 <td style={{ padding: '5px' }}>{destPrefix}</td>
                 <td style={{ padding: '5px' }}>
                   <Button
-                    onClick={() => setIsDialogOpen(true)}
+                    onClick={() => setWhichDialogue(skuName)}
                     variant='primary'
                     icon='edit'
                     disabled={!canReceive}
                   >
                     Receive {skuName}
                   </Button>
-                  {isDialogOpen &&
+                  {whichDialogue === skuName &&
                     ReceiveSKUOrderDialogue({
-                      isDialogOpen: isDialogOpen,
-                      setIsDialogOpen: setIsDialogOpen,
+                      setIsDialogOpen: setWhichDialogue,
                       skuName: skuName
                     })}
                 </td>
