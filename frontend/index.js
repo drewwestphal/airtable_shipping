@@ -28,33 +28,9 @@ function JoCoShipping () {
   const isReceivedField = skuOrdersTrackingTable.getFieldByName(
     'Tracking # Received?'
   )
-  const linkToSkuOrders = skuOrdersTrackingTable.getFieldByName('SKU Orders')
-
-  const skuOrdersTable = base.getTableByName('SKU Orders')
-  const skuOrderOrderField = skuOrdersTable.getFieldByName('Order')
-  const skuOrderSKUField = skuOrdersTable.getFieldByName('SKU')
-  const skuOrderQuantityField = skuOrdersTable.getFieldByName(
-    'Quantity Ordered'
+  const linkToSkuOrdersField = skuOrdersTrackingTable.getFieldByName(
+    'SKU Orders'
   )
-  const skuOrderExternalProductName = skuOrdersTable.getFieldByName(
-    'External Product Name'
-  )
-  const skuOrderReceivedField = skuOrdersTable.getFieldByName('Received?')
-  const skuOrderDestinationField = skuOrdersTable.getFieldByName(
-    'Onboard Destination'
-  )
-  const skuOrderDestinationNotesField = skuOrdersTable.getFieldByName(
-    'Onboard Destination Notes'
-  )
-  const skuOrderFields = [
-    skuOrderOrderField,
-    skuOrderSKUField,
-    skuOrderQuantityField,
-    skuOrderExternalProductName,
-    skuOrderReceivedField,
-    skuOrderDestinationField,
-    skuOrderDestinationNotesField
-  ]
 
   const trackingRecords = useRecords(skuOrdersTrackingTable, {
     fields: [trackingNumberField, isReceivedField]
@@ -81,24 +57,16 @@ function JoCoShipping () {
       )
     })
 
-  // we only wanna see once which HAVE been received
-  // this will result in 0 or more Query Results in an array
-  const skuOrdersResult = searchResults
-    .filter(tracking => {
+  const skuOrders = UnreceivedSKUOrders({
+    base: base,
+    linkField: linkToSkuOrdersField,
+    trackingRecordsToFollow: searchResults.filter(tracking => {
       return tracking.getCellValue(isReceivedField)
     })
-    .map(tracking => {
-      return tracking.selectLinkedRecordsFromCell(linkToSkuOrders, {
-        fields: skuOrderFields,
-        sorts: [{ field: skuOrderDestinationField, direction: 'desc' }]
-      })
-    })
-
-  useLoadable(skuOrdersResult)
-
-  const skuOrders = skuOrdersResult.flatMap(queryRes => {
-    return queryRes.records
   })
+  // we only wanna see once which HAVE been received
+  // this will result in 0 or more Query Results in an array
+
   return (
     <div>
       <ViewportConstraint minSize={{ width: 800 }} />
@@ -119,19 +87,7 @@ function JoCoShipping () {
         ''
       )}
       {mustReceive.length === 0 && searchString.trim().length > 0 ? (
-        <div>
-          {UnreceivedSKUOrders({
-            records: skuOrders,
-            table: skuOrdersTable,
-            skuOrderOrderField: skuOrderOrderField,
-            skuOrderSKUField: skuOrderSKUField,
-            skuOrderQuantityField: skuOrderQuantityField,
-            skuOrderExternalProductName: skuOrderExternalProductName,
-            skuOrderReceivedField: skuOrderReceivedField,
-            skuOrderDestinationField: skuOrderDestinationField,
-            skuOrderDestinationNotesField: skuOrderDestinationNotesField
-          })}
-        </div>
+        <div>{skuOrders}</div>
       ) : (
         ''
       )}
@@ -194,17 +150,54 @@ function UnreceivedTrackingNumber ({ record, table, doneField }) {
   )
 }
 
-function UnreceivedSKUOrders ({
-  records,
-  table,
-  skuOrderOrderField,
-  skuOrderSKUField,
-  skuOrderQuantityField,
-  skuOrderExternalProductName,
-  skuOrderReceivedField,
-  skuOrderDestinationField,
-  skuOrderDestinationNotesField
-}) {
+function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
+  const skuOrdersTable = base.getTableByName('SKU Orders')
+  const skuOrderOrderField = skuOrdersTable.getFieldByName('Order')
+  const skuOrderSKUField = skuOrdersTable.getFieldByName('SKU')
+  const skuOrderSKUNameField = skuOrdersTable.getFieldByName('gtg_sku_name')
+  const skuOrderQuantityField = skuOrdersTable.getFieldByName(
+    'Quantity Ordered'
+  )
+  const skuOrderExternalProductName = skuOrdersTable.getFieldByName(
+    'External Product Name'
+  )
+  const skuOrderReceivedField = skuOrdersTable.getFieldByName('Received?')
+  const skuOrderDestinationField = skuOrdersTable.getFieldByName(
+    'Onboard Destination'
+  )
+  const skuOrderDestNameField = skuOrdersTable.getFieldByName('gtg_dest_prefix')
+
+  const skuOrderDestinationNotesField = skuOrdersTable.getFieldByName(
+    'Onboard Destination Notes'
+  )
+  const skuOrderFields = [
+    skuOrderOrderField,
+    skuOrderSKUField,
+    skuOrderSKUNameField,
+    skuOrderQuantityField,
+    skuOrderExternalProductName,
+    skuOrderReceivedField,
+    skuOrderDestinationField,
+    skuOrderDestNameField,
+    skuOrderDestinationNotesField
+  ]
+
+  // get an array of query results
+  const skuOrderRecordQueryResults = trackingRecordsToFollow.map(tracking => {
+    return tracking.selectLinkedRecordsFromCell(linkField, {
+      fields: skuOrderFields,
+      sorts: [{ field: skuOrderDestinationField, direction: 'desc' }]
+    })
+  })
+
+  // useloadable on the array to wait on these items
+  useLoadable(skuOrderRecordQueryResults)
+
+  // flatten out the results into one array
+  const skuOrders = skuOrderRecordQueryResults.flatMap(queryRes => {
+    return queryRes.records
+  })
+
   return (
     <Box height='450px' border='thick' backgroundColor='lightGray1'>
       <h2>Unreceived SKUOrders</h2>
@@ -220,21 +213,15 @@ function UnreceivedSKUOrders ({
           </tr>
         </thead>
         <tbody>
-          {records.map(rec => {
+          {skuOrders.map(rec => {
             var dest = ''
             var sku = ''
             return (
               <tr>
-                <td>
-                  {(sku = rec.getCellValue(skuOrderSKUField)) ? sku.name : ''}
-                </td>
+                <td>{rec.getCellValue(skuOrderSKUNameField)}</td>
                 <td>{rec.getCellValue(skuOrderExternalProductName)}</td>
                 <td>{rec.getCellValue(skuOrderQuantityField)}</td>
-                <td>
-                  {(dest = rec.getCellValue(skuOrderDestinationField))
-                    ? dest.name
-                    : 'n/a'}
-                </td>
+                <td>{rec.getCellValue(skuOrderDestNameField)}</td>
                 <td></td>
               </tr>
             )
