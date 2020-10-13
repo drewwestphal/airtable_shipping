@@ -1,20 +1,20 @@
 import {
   initializeBlock,
-  useBase,
+  useRecordIds,
   useGlobalConfig,
   Input,
-  Switch,
   ViewportConstraint,
   useRecords,
   Box,
   FormField,
   Button,
-  RecordCardList,
+  Heading,
   ConfirmationDialog,
-  expandRecord,
-  useLoadable
+  useLoadable,
+  Text,
+  Dialog
 } from '@airtable/blocks/ui'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import getSchema from './schema.js'
 
 function JoCoShipping () {
@@ -31,12 +31,13 @@ function JoCoShipping () {
 
   const searchResults = trackingRecords.filter(record => {
     return (
+      // this line triggers the app to reload as soon as a string comes thru
+      // searchString.length>0 &&
       record
         .getCellValueAsString(schema.skuOrdersTracking.field.trackingNumberPK)
         .trim().length > 0 && record.name.includes(searchString)
     )
   })
-  console.log(trackingRecords)
 
   const mustReceive = searchResults
     .filter(record => {
@@ -65,6 +66,34 @@ function JoCoShipping () {
   })
   // we only wanna see once which HAVE been received
   // this will result in 0 or more Query Results in an array
+
+  const destsNeedingAMaxBox = useRecords(
+    schema.boxDestinations.view.destNeedsEmptyMaxBox,
+    { fields: schema.boxDestinations.allFields }
+  )
+
+  const boxesToCreate = getBoxesToCreate(schema, destsNeedingAMaxBox)
+  useEffect(
+    () => {
+      // this must be wrapped and then called, in order to fully throw away
+      // its result
+      ;(async () => {
+        // batch size is 50
+        for (let i = 0; i < boxesToCreate.length; i += 50) {
+          //console.log()
+          await schema.boxes.table.createRecordsAsync(
+            boxesToCreate.slice(i, i + 50)
+          )
+        }
+        console.log('creating box records', boxesToCreate)
+      })()
+    },
+    []
+    /**
+     * I should be able to be dependent on the length of boxesToCreate
+     * but it keeps creating a few dupe records and I don't understand
+     */
+  )
 
   return (
     <div>
@@ -108,7 +137,12 @@ const SearchBox = (searchString, setSearchString) => {
 }
 
 function UnreceivedTrackingNumber ({ record, table, doneField }) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  // doing this for now because idk if using it the easier way would be a bug
+  const [whichDialogue, setWhichDialogue] = useState(false)
+  const isDialogOpen = whichDialogue === record.name
+  const setIsDialogOpen = aBool => {
+    setWhichDialogue(aBool ? record.name : false)
+  }
 
   return (
     <Box
@@ -153,6 +187,10 @@ function UnreceivedTrackingNumber ({ record, table, doneField }) {
 }
 
 function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
+  const [whichBoxPickingDialog, setWhichBoxPickingDialog] = useState(false)
+  const [whichPackingDialog, setWhichPackingDialog] = useState(false)
+  const [howMuchToPack, setHowMuchToPack] = useState(false)
+
   // get an array of query results
   const skuOrderRecordQueryResults = skuOrderTrackingRecordsToFollow.map(
     tracking => {
@@ -170,14 +208,27 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
       )
     }
   )
-  useLoadable(skuOrderRecordQueryResults)
   // useloadable on the array to wait on these items
+  useLoadable(skuOrderRecordQueryResults)
   // flatten out the results into one array
-  const skuOrders = skuOrderRecordQueryResults.flatMap(queryRes => {
+  const unreceivedSkuOrders = skuOrderRecordQueryResults.flatMap(queryRes => {
     return queryRes.records
   })
 
-  const [whichDialogue, setWhichDialogue] = useState(false)
+  /**
+   * NOW: I need to get records for the destinations that I'm curious
+   * about. I can't "use" them and wait on them using the airtable hooks
+   * if I have a varying number of queries for them.
+   *
+   * The natural thing might be to trace all the relationships and pull in
+   * the graph of these data for the results. Another natural approach
+   * could be to just to a direct query on the destinations I am interested in
+   *
+   */
+  const everyEmptyOrMaximalBox = useRecords(
+    schema.boxes.view.emptyOrMaximalBoxes,
+    { fields: schema.boxes.allFields }
+  )
 
   return (
     <Box height='450px' border='thick' backgroundColor='lightGray1'>
@@ -186,6 +237,7 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
       <table border={1}>
         <thead>
           <tr>
+            <th>Tracking #</th>
             <th>SKU</th>
             <th>Desc</th>
             <th>Expect</th>
@@ -194,7 +246,7 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
           </tr>
         </thead>
         <tbody>
-          {skuOrders.map(rec => {
+          {unreceivedSkuOrders.map(rec => {
             const skuName = rec.getCellValue(schema.skuOrders.field.skuName)
             const expectQty = rec.getCellValue(
               schema.skuOrders.field.quantityOrdered
@@ -211,10 +263,13 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
               destPrefix &&
               destPrefix.trim().length > 0
 
-            // declare it up here so it gets all called now
-
             return (
               <tr>
+                <td style={{ padding: '5px' }}>
+                  {rec.getCellValueAsString(
+                    schema.skuOrders.field.trackingNumberRel
+                  )}
+                </td>
                 <td style={{ padding: '5px' }}>{skuName}</td>
                 <td style={{ padding: '5px' }}>
                   {rec.getCellValue(schema.skuOrders.field.externalProductName)}
@@ -223,18 +278,24 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
                 <td style={{ padding: '5px' }}>{destPrefix}</td>
                 <td style={{ padding: '5px' }}>
                   <Button
-                    onClick={() => setWhichDialogue(skuName)}
+                    onClick={() => setWhichBoxPickingDialog(skuName)}
                     variant='primary'
                     icon='edit'
                     disabled={!canReceive}
                   >
                     Receive {skuName}
                   </Button>
-                  {whichDialogue === skuName &&
-                    ReceiveSKUOrderDialogue({
-                      setIsDialogOpen: setWhichDialogue,
+                  {whichBoxPickingDialog === skuName &&
+                    PickABoxToReceiveIntoDialogue({
+                      setIsDialogOpen: setWhichBoxPickingDialog,
                       skuName: skuName,
-                      schema
+                      skuOrder: rec,
+                      everyEmptyOrMaximalBox: everyEmptyOrMaximalBox,
+                      schema: schema,
+                      whichPackingDialog: whichPackingDialog,
+                      setWhichPackingDialog: setWhichPackingDialog,
+                      howMuchToPack: howMuchToPack,
+                      setHowMuchToPack: setHowMuchToPack
                     })}
                 </td>
               </tr>
@@ -246,17 +307,194 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
   )
 }
 
-function ReceiveSKUOrderDialogue ({ setIsDialogOpen, skuName, schema }) {
+function PickABoxToReceiveIntoDialogue ({
+  setIsDialogOpen,
+  skuName,
+  schema,
+  skuOrder,
+  everyEmptyOrMaximalBox,
+  whichPackingDialog,
+  setWhichPackingDialog,
+  howMuchToPack,
+  setHowMuchToPack
+}) {
+  const skuOrderBoxDestRel = skuOrder.getCellValue(
+    schema.skuOrders.field.boxDestinationRel
+  )
+
+  const myPotentialBoxes = everyEmptyOrMaximalBox.reduce(
+    (accum, box) => {
+      const boxDestRel = box.getCellValue(
+        schema.boxes.field.onboardDestinationRel
+      )
+      if (
+        boxDestRel &&
+        skuOrderBoxDestRel &&
+        // the rels are arrays... so you gotta get the first item
+        boxDestRel[0].id === skuOrderBoxDestRel[0].id
+      ) {
+        const isMax = box.getCellValue(schema.boxes.field.isMaxBox)
+        const isPenultimate = box.getCellValue(
+          schema.boxes.field.isPenultimateBox
+        )
+        const isEmpty = box.getCellValue(schema.boxes.field.isEmpty)
+        if (isMax) {
+          accum.maxBox = box
+          accum.maxBoxIsEmpty = isEmpty
+        } else if (isPenultimate) {
+          accum.penultimateBox = box
+          accum.penultimateBoxIsEmpty = isEmpty
+        } else if (isEmpty) {
+          accum.emptyNonMaxBoxes.push(box)
+        }
+      }
+      return accum
+    },
+    {
+      maxBox: null,
+      maxBoxIsEmpty: false,
+      penultimateBox: null,
+      penultimateBoxIsEmpty: false,
+      emptyNonMaxBoxes: []
+    }
+  )
+
+  const makeTR = (boxRecord, variant, statusStr, isEmpty) => {
+    return (
+      <tr>
+        <td style={{ padding: '5px' }}>
+          <Button
+            onClick={() => setWhichPackingDialog(boxRecord.name)}
+            variant={variant}
+            icon='play'
+            //disabled={!canReceive}
+          >
+            {boxRecord.name}
+          </Button>
+
+          {whichPackingDialog === boxRecord.name &&
+            BoxPackingDialog({
+              skuName: skuName,
+              boxRecord: boxRecord,
+              setIsDialogOpen: setWhichPackingDialog,
+              howMuchToPack: howMuchToPack,
+              setHowMuchToPack: setHowMuchToPack
+            })}
+        </td>
+        <td style={{ padding: '5px' }}>{boxRecord.name}</td>
+        <td style={{ padding: '5px' }}>{statusStr}</td>
+        <td style={{ padding: '5px' }}>
+          {isEmpty ? 'Empty Box 🕳️' : 'Already has items 🍱'}
+        </td>
+        <td style={{ padding: '5px' }}>
+          {boxRecord.getCellValue(schema.boxes.field.notes)}
+        </td>
+      </tr>
+    )
+  }
+  const bodyContent = (
+    <Box>
+      <Heading>What box should we receive {skuName} into?</Heading>
+      <table border={1}>
+        <thead>
+          <tr>
+            <th>Use?</th>
+            <th>Box Number</th>
+            <th>Status</th>
+            <th>IsEmpty?</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {myPotentialBoxes.penultimateBox &&
+            makeTR(
+              myPotentialBoxes.penultimateBox,
+              'primary',
+              'The box you were packing last',
+              myPotentialBoxes.penultimateBoxIsEmpty
+            )}{' '}
+          {myPotentialBoxes.maxBox &&
+            makeTR(
+              myPotentialBoxes.maxBox,
+              'danger',
+              'A new box',
+              myPotentialBoxes.maxBoxIsEmpty
+            )}
+          {myPotentialBoxes.emptyNonMaxBoxes.map(box =>
+            makeTR(box, 'default', 'Misc. empty box', true)
+          )}
+        </tbody>
+      </table>
+    </Box>
+  )
   return (
-    <ConfirmationDialog
-      title={'Receiving ' + skuName}
-      body='This action can’t be undone.'
-      onConfirm={() => {
+    <Dialog
+      width={800}
+      onClose={() => {
         setIsDialogOpen(false)
       }}
-      onCancel={() => setIsDialogOpen(false)}
-    />
+    >
+      <Dialog.CloseButton />
+      {bodyContent}
+    </Dialog>
   )
+}
+
+function BoxPackingDialog ({
+  skuName,
+  boxRecord,
+  setIsDialogOpen,
+  howMuchToPack,
+  setHowMuchToPack
+}) {
+  return (
+    <Dialog
+      width={800}
+      onClose={() => {
+        setIsDialogOpen(false)
+      }}
+    >
+      <Dialog.CloseButton />
+
+      <Heading>{'Receiving ' + skuName + ' into ' + boxRecord.name}</Heading>
+      <Text variant='paragraph'>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam neque dui,
+        euismod ac quam eget, pretium cursus nisl.
+      </Text>
+      <FormField label='Quantity to Receive'>
+        <Input
+          value={howMuchToPack}
+          min={0}
+          required={true}
+          type='number'
+          size='large'
+          tabIndex={0}
+          onChange={e => setHowMuchToPack(e.target.value)}
+        />
+      </FormField>
+
+      <Button onClick={() => setIsDialogOpen(false)}>Close</Button>
+    </Dialog>
+  )
+}
+
+function getBoxesToCreate (schema, destsNeedingAMaxBox) {
+  return destsNeedingAMaxBox.reduce((accum, boxDestRecord) => {
+    const newBox = {}
+    newBox.fields = {}
+    // attempt to track the changes
+    newBox.fields[schema.boxes.field.boxNumberOnly.id] =
+      boxDestRecord.getCellValue(
+        schema.boxDestinations.field.currentMaximalBoxNumber
+      ) + 1
+
+    newBox.fields[schema.boxes.field.onboardDestinationRel.id] = [
+      { id: boxDestRecord.id }
+    ]
+    newBox.fields[schema.boxes.field.notes.id] = 'Created by Receiving Tool'
+    accum.push(newBox)
+    return accum
+  }, [])
 }
 
 initializeBlock(() => <JoCoShipping />)
