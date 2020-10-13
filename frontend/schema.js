@@ -16,12 +16,16 @@ export default function getSchema () {
     schema.skuOrdersTracking.view = {}
     schema.skuOrdersTracking.field = {}
     schema.skuOrdersTracking.table = table
+
+    //pk
     schema.skuOrdersTracking.field.trackingNumberPK = table.primaryField
-    schema.skuOrdersTracking.field.trackingNumberReceived = table.getFieldByName(
-      'Tracking # Received?'
-    )
+    //rel
     schema.skuOrdersTracking.field.skuOrdersRel = table.getFieldByName(
       'SKU Orders'
+    )
+    //data
+    schema.skuOrdersTracking.field.trackingNumberReceived = table.getFieldByName(
+      'Tracking # Received?'
     )
     schema.skuOrdersTracking.allViews = Object.values(
       schema.skuOrdersTracking.view
@@ -57,10 +61,13 @@ export default function getSchema () {
     schema.skuOrders.field.trackingNumberReceived = table.getFieldByName(
       'Tracking # Received?'
     )
-    schema.skuOrders.field.skuName = table.getFieldByName('gtg_sku_name')
     schema.skuOrders.field.quantityOrdered = table.getFieldByName(
       'Quantity Ordered'
     )
+    schema.skuOrders.field.quantityPacked = table.getFieldByName(
+      'gtg_packed_qty'
+    )
+    schema.skuOrders.field.boxedCheckbox = table.getFieldByName('Boxed?')
     schema.skuOrders.field.externalProductName = table.getFieldByName(
       'External Product Name'
     )
@@ -138,7 +145,6 @@ export default function getSchema () {
     schema.boxDestinations.field.boxDestNamePK = table.primaryField
     //rel
     //data
-    schema.boxDestinations.field.prefix = table.getFieldByName('Prefix')
     schema.boxDestinations.field.currentMaximalBoxNumber = table.getFieldByName(
       'Current Maximal Box #'
     )
@@ -147,6 +153,34 @@ export default function getSchema () {
     schema.boxDestinations.allFields = Object.values(
       schema.boxDestinations.field
     )
+  }
+
+  /**
+   *
+   *
+   * Box Lines
+   *
+   *
+   */
+  {
+    let table = base.getTableByName('Box Lines')
+    schema.boxLines = {}
+    schema.boxLines.view = {}
+    schema.boxLines.field = {}
+    schema.boxLines.table = table
+
+    //view
+    //pk
+    schema.boxLines.field.boxLinePK = table.primaryField
+    //rel
+    schema.boxLines.field.boxRel = table.getFieldByName('Box #')
+    schema.boxLines.field.skuRel = table.getFieldByName('SKU')
+    schema.boxLines.field.skuOrderRel = table.getFieldByName('SKU Order')
+    //data
+    schema.boxLines.field.skuQty = table.getFieldByName('SKU Qty')
+
+    schema.boxLines.allViews = Object.values(schema.boxLines.view)
+    schema.boxLines.allFields = Object.values(schema.boxLines.field)
   }
 
   return schema

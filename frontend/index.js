@@ -189,7 +189,7 @@ function UnreceivedTrackingNumber ({ record, table, doneField }) {
 function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
   const [whichBoxPickingDialog, setWhichBoxPickingDialog] = useState(false)
   const [whichPackingDialog, setWhichPackingDialog] = useState(false)
-  const [howMuchToPack, setHowMuchToPack] = useState(false)
+  const [howMuchToPack, setHowMuchToPack] = useState(0)
 
   // get an array of query results
   const skuOrderRecordQueryResults = skuOrderTrackingRecordsToFollow.map(
@@ -241,18 +241,32 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
             <th>SKU</th>
             <th>Desc</th>
             <th>Expect</th>
+            <th>AlreadyPacked</th>
             <th>Dest</th>
             <th>Recv?</th>
+            <th>Notes</th>
           </tr>
         </thead>
         <tbody>
           {unreceivedSkuOrders.map(rec => {
-            const skuName = rec.getCellValue(schema.skuOrders.field.skuName)
+            const skuRel = rec.getCellValue(schema.skuOrders.field.skuRel)
+            if (!skuRel) {
+              // if this is null we can't go on
+              return
+            }
+            const skuId = skuRel[0].id
+            const skuName = skuRel[0].name
             const expectQty = rec.getCellValue(
               schema.skuOrders.field.quantityOrdered
             )
+            const alreadyPacked = rec.getCellValue(
+              schema.skuOrders.field.quantityPacked
+            )
             const destPrefix = rec.getCellValue(
               schema.skuOrders.field.destinationPrefix
+            )
+            const receivingNotes = rec.getCellValue(
+              schema.skuOrders.field.receivingNotes
             )
 
             const canReceive =
@@ -275,6 +289,7 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
                   {rec.getCellValue(schema.skuOrders.field.externalProductName)}
                 </td>
                 <td style={{ padding: '5px' }}>{expectQty}</td>
+                <td style={{ padding: '5px' }}>{alreadyPacked}</td>
                 <td style={{ padding: '5px' }}>{destPrefix}</td>
                 <td style={{ padding: '5px' }}>
                   <Button
@@ -288,6 +303,7 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
                   {whichBoxPickingDialog === skuName &&
                     PickABoxToReceiveIntoDialogue({
                       setIsDialogOpen: setWhichBoxPickingDialog,
+                      skuId: skuId,
                       skuName: skuName,
                       skuOrder: rec,
                       everyEmptyOrMaximalBox: everyEmptyOrMaximalBox,
@@ -298,6 +314,7 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
                       setHowMuchToPack: setHowMuchToPack
                     })}
                 </td>
+                <td style={{ padding: '5px' }}>{receivingNotes}</td>
               </tr>
             )
           })}
@@ -310,6 +327,7 @@ function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
 function PickABoxToReceiveIntoDialogue ({
   setIsDialogOpen,
   skuName,
+  skuId,
   schema,
   skuOrder,
   everyEmptyOrMaximalBox,
@@ -374,8 +392,11 @@ function PickABoxToReceiveIntoDialogue ({
 
           {whichPackingDialog === boxRecord.name &&
             BoxPackingDialog({
-              skuName: skuName,
-              boxRecord: boxRecord,
+              schema: schema,
+              selectedSkuName: skuName,
+              selectedSkuId: skuId,
+              selectedSkuOrder: skuOrder,
+              selectedBoxRecord: boxRecord,
               setIsDialogOpen: setWhichPackingDialog,
               howMuchToPack: howMuchToPack,
               setHowMuchToPack: setHowMuchToPack
@@ -412,7 +433,7 @@ function PickABoxToReceiveIntoDialogue ({
               'primary',
               'The box you were packing last',
               myPotentialBoxes.penultimateBoxIsEmpty
-            )}{' '}
+            )}
           {myPotentialBoxes.maxBox &&
             makeTR(
               myPotentialBoxes.maxBox,
@@ -441,22 +462,20 @@ function PickABoxToReceiveIntoDialogue ({
 }
 
 function BoxPackingDialog ({
-  skuName,
-  boxRecord,
+  schema,
+  selectedSkuName,
+  selectedSkuId,
+  selectedSkuOrder,
+  selectedBoxRecord,
   setIsDialogOpen,
   howMuchToPack,
   setHowMuchToPack
 }) {
-  return (
-    <Dialog
-      width={800}
-      onClose={() => {
-        setIsDialogOpen(false)
-      }}
-    >
-      <Dialog.CloseButton />
-
-      <Heading>{'Receiving ' + skuName + ' into ' + boxRecord.name}</Heading>
+  const body = (
+    <div>
+      <Heading>
+        {'Receiving ' + selectedSkuName + ' into ' + selectedBoxRecord.name}
+      </Heading>
       <Text variant='paragraph'>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam neque dui,
         euismod ac quam eget, pretium cursus nisl.
@@ -472,9 +491,30 @@ function BoxPackingDialog ({
           onChange={e => setHowMuchToPack(e.target.value)}
         />
       </FormField>
+    </div>
+  )
 
-      <Button onClick={() => setIsDialogOpen(false)}>Close</Button>
-    </Dialog>
+  const newBoxLine = {
+    [schema.boxLines.field.boxRel.id]: [{ id: selectedBoxRecord.id }],
+    [schema.boxLines.field.skuOrderRel.id]: [{ id: selectedSkuOrder.id }],
+    [schema.boxLines.field.skuRel.id]: [{ id: selectedSkuId }],
+    [schema.boxLines.field.skuQty.id]: parseInt(howMuchToPack)
+  }
+
+  return (
+    <ConfirmationDialog
+      width={800}
+      body={body}
+      onClose={() => {
+        setIsDialogOpen(false)
+      }}
+      onConfirm={() => {
+        schema.boxLines.table.createRecordAsync(newBoxLine)
+        setIsDialogOpen(false)
+      }}
+      cancelButtonText='Go Back... :('
+      confirmButtonText='Pack that SKU!!'
+    />
   )
 }
 
