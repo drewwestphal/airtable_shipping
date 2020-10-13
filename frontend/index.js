@@ -15,55 +15,52 @@ import {
   useLoadable
 } from '@airtable/blocks/ui'
 import React, { useState } from 'react'
+import getSchema from './schema.js'
 
 function JoCoShipping () {
-  const base = useBase()
+  const schema = getSchema()
+  const base = schema.base
   const globalConfig = useGlobalConfig()
 
   const [searchString, setSearchString] = useState('')
   const searchBox = SearchBox(searchString, setSearchString)
 
-  const skuOrdersTrackingTable = base.getTableByName('SKU Orders Tracking')
-  // Tracking Number
-  const trackingNumberField = skuOrdersTrackingTable.primaryField
-  // Tracking # Received?
-  const isReceivedField = skuOrdersTrackingTable.getFieldByName(
-    'Tracking # Received?'
-  )
-  const linkToSkuOrdersField = skuOrdersTrackingTable.getFieldByName(
-    'SKU Orders'
-  )
-
-  const trackingRecords = useRecords(skuOrdersTrackingTable, {
-    fields: [trackingNumberField, isReceivedField]
+  const trackingRecords = useRecords(schema.skuOrdersTracking.table, {
+    fields: schema.skuOrdersTracking.allFields
   })
 
   const searchResults = trackingRecords.filter(record => {
     return (
-      record.getCellValue(trackingNumberField).trim().length > 0 &&
-      record.name.includes(searchString)
+      record
+        .getCellValueAsString(schema.skuOrdersTracking.field.trackingNumberPK)
+        .trim().length > 0 && record.name.includes(searchString)
     )
   })
+  console.log(trackingRecords)
+
   const mustReceive = searchResults
     .filter(record => {
-      return !record.getCellValue(isReceivedField)
+      return !record.getCellValue(
+        schema.skuOrdersTracking.field.trackingNumberReceived
+      )
     })
     .map(record => {
       return (
         <UnreceivedTrackingNumber
           key={record.id}
           record={record}
-          table={skuOrdersTrackingTable}
-          doneField={isReceivedField}
+          table={schema.skuOrdersTracking.table}
+          doneField={schema.skuOrdersTracking.field.trackingNumberReceived}
         />
       )
     })
 
   const skuOrders = UnreceivedSKUOrders({
-    base: base,
-    linkField: linkToSkuOrdersField,
-    trackingRecordsToFollow: searchResults.filter(tracking => {
-      return tracking.getCellValue(isReceivedField)
+    schema: schema,
+    skuOrderTrackingRecordsToFollow: searchResults.filter(tracking => {
+      return tracking.getCellValue(
+        schema.skuOrdersTracking.field.trackingNumberReceived
+      )
     })
   })
   // we only wanna see once which HAVE been received
@@ -82,7 +79,7 @@ function JoCoShipping () {
             number(s) for your query are received, then items from within can be
             received and boxed.
           </p>
-          <ul>{mustReceive}</ul>
+          {mustReceive}
         </div>
       ) : (
         ''
@@ -140,6 +137,8 @@ function UnreceivedTrackingNumber ({ record, table, doneField }) {
         <ConfirmationDialog
           title={'Receive ' + record.name + '?'}
           body='This action can’t be undone.'
+          cancelButtonText='Nevermind! AHH'
+          confirmButtonText="Recevez S'il Vous Plait"
           onConfirm={() => {
             table.updateRecordAsync(record, {
               [doneField.id]: true
@@ -153,49 +152,26 @@ function UnreceivedTrackingNumber ({ record, table, doneField }) {
   )
 }
 
-function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
-  const skuOrdersTable = base.getTableByName('SKU Orders')
-  const skuOrderOrderField = skuOrdersTable.getFieldByName('Order')
-  const skuOrderSKUField = skuOrdersTable.getFieldByName('SKU')
-  const skuOrderSKUNameField = skuOrdersTable.getFieldByName('gtg_sku_name')
-  const skuOrderQuantityField = skuOrdersTable.getFieldByName(
-    'Quantity Ordered'
-  )
-  const skuOrderExternalProductName = skuOrdersTable.getFieldByName(
-    'External Product Name'
-  )
-  const skuOrderReceivedField = skuOrdersTable.getFieldByName('Received?')
-  const skuOrderDestinationField = skuOrdersTable.getFieldByName(
-    'Onboard Destination'
-  )
-  const skuOrderDestNameField = skuOrdersTable.getFieldByName('gtg_dest_prefix')
-
-  const skuOrderDestinationNotesField = skuOrdersTable.getFieldByName(
-    'Onboard Destination Notes'
-  )
-  const skuOrderFields = [
-    skuOrderOrderField,
-    skuOrderSKUField,
-    skuOrderSKUNameField,
-    skuOrderQuantityField,
-    skuOrderExternalProductName,
-    skuOrderReceivedField,
-    skuOrderDestinationField,
-    skuOrderDestNameField,
-    skuOrderDestinationNotesField
-  ]
-
+function UnreceivedSKUOrders ({ schema, skuOrderTrackingRecordsToFollow }) {
   // get an array of query results
-  const skuOrderRecordQueryResults = trackingRecordsToFollow.map(tracking => {
-    return tracking.selectLinkedRecordsFromCell(linkField, {
-      fields: skuOrderFields,
-      sorts: [{ field: skuOrderDestinationField, direction: 'desc' }]
-    })
-  })
-
-  // useloadable on the array to wait on these items
+  const skuOrderRecordQueryResults = skuOrderTrackingRecordsToFollow.map(
+    tracking => {
+      return tracking.selectLinkedRecordsFromCell(
+        schema.skuOrdersTracking.field.skuOrdersRel,
+        {
+          fields: schema.skuOrders.allFields,
+          sorts: [
+            {
+              field: schema.skuOrders.field.destinationPrefix,
+              direction: 'desc'
+            }
+          ]
+        }
+      )
+    }
+  )
   useLoadable(skuOrderRecordQueryResults)
-
+  // useloadable on the array to wait on these items
   // flatten out the results into one array
   const skuOrders = skuOrderRecordQueryResults.flatMap(queryRes => {
     return queryRes.records
@@ -219,9 +195,13 @@ function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
         </thead>
         <tbody>
           {skuOrders.map(rec => {
-            const skuName = rec.getCellValue(skuOrderSKUNameField)
-            const expectQty = rec.getCellValue(skuOrderQuantityField)
-            const destPrefix = rec.getCellValue(skuOrderDestNameField)
+            const skuName = rec.getCellValue(schema.skuOrders.field.skuName)
+            const expectQty = rec.getCellValue(
+              schema.skuOrders.field.quantityOrdered
+            )
+            const destPrefix = rec.getCellValue(
+              schema.skuOrders.field.destinationPrefix
+            )
 
             const canReceive =
               skuName &&
@@ -231,11 +211,13 @@ function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
               destPrefix &&
               destPrefix.trim().length > 0
 
+            // declare it up here so it gets all called now
+
             return (
               <tr>
                 <td style={{ padding: '5px' }}>{skuName}</td>
                 <td style={{ padding: '5px' }}>
-                  {rec.getCellValue(skuOrderExternalProductName)}
+                  {rec.getCellValue(schema.skuOrders.field.externalProductName)}
                 </td>
                 <td style={{ padding: '5px' }}>{expectQty}</td>
                 <td style={{ padding: '5px' }}>{destPrefix}</td>
@@ -251,7 +233,8 @@ function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
                   {whichDialogue === skuName &&
                     ReceiveSKUOrderDialogue({
                       setIsDialogOpen: setWhichDialogue,
-                      skuName: skuName
+                      skuName: skuName,
+                      schema
                     })}
                 </td>
               </tr>
@@ -263,7 +246,7 @@ function UnreceivedSKUOrders ({ base, linkField, trackingRecordsToFollow }) {
   )
 }
 
-function ReceiveSKUOrderDialogue ({ setIsDialogOpen, skuName }) {
+function ReceiveSKUOrderDialogue ({ setIsDialogOpen, skuName, schema }) {
   return (
     <ConfirmationDialog
       title={'Receiving ' + skuName}
