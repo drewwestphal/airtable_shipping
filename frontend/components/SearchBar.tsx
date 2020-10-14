@@ -9,12 +9,12 @@ interface Props {
   updateSearchStr(searchString: string): void
 }
 
-const SearchBarImpl = (props: Props) => {
+const SearchBarImpl = ({ searchString, updateSearchStr }: Props) => {
   return (
     <FormField label="Tracking Number Search">
       <Input
-        value={props.searchString}
-        onChange={(e) => props.updateSearchStr(e.target.value)}
+        value={searchString}
+        onChange={(e) => updateSearchStr(e.target.value)}
         placeholder="Search..."
         size="large"
         width="320px"

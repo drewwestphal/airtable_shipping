@@ -1,5 +1,6 @@
 import Base from '@airtable/blocks/dist/types/src/models/base'
 import Field from '@airtable/blocks/dist/types/src/models/field'
+import Record from '@airtable/blocks/dist/types/src/models/record'
 import Table from '@airtable/blocks/dist/types/src/models/table'
 import View from '@airtable/blocks/dist/types/src/models/view'
 import { useBase } from '@airtable/blocks/ui'
@@ -26,25 +27,29 @@ export class Schema {
       let table = base.getTableByName('SKU Orders Tracking')
       this.skuOrdersTracking = {
         table: table,
-        view: {},
+        view: {
+          hasTrackingNumber: table.getViewByName(
+            'gtg_searchable_tracking_numbers'
+          ),
+        },
         field: {
           //pk
           trackingNumberPK: table.primaryField,
           //rel
           skuOrdersRel: table.getFieldByName('SKU Orders'),
           //data
-          //trackingNumberReceived: table.getFieldByName('Tracking # Received?'),
+          isTrackingNumberReceivedRO: table.getFieldByName(
+            'gtg_was_tracking_number_received'
+          ),
+          receivedAtDateTime: table.getFieldByName('Date Received'),
+          receivingNotes: table.getFieldByName('Receiving Notes (JoCo)'),
+          warehouseNotes: table.getFieldByName('Warehouse Notes (GTG)'),
         },
+        val: {},
+        stringVal: {},
         allViews: [],
         allFields: [],
       }
-
-      this.skuOrdersTracking.allViews = Object.values(
-        this.skuOrdersTracking.view
-      )
-      this.skuOrdersTracking.allFields = Object.values(
-        this.skuOrdersTracking.field
-      )
     }
     {
       /**
@@ -76,12 +81,11 @@ export class Schema {
           destinationPrefix: table.getFieldByName('gtg_dest_prefix'),
           receivingNotes: table.getFieldByName('SKU Receiving Notes'),
         },
+        val: {},
+        stringVal: {},
         allViews: [],
         allFields: [],
       }
-
-      this.skuOrders.allViews = Object.values(this.skuOrders.view)
-      this.skuOrders.allFields = Object.values(this.skuOrders.field)
     }
     {
       /**
@@ -112,6 +116,8 @@ export class Schema {
           isEmpty: table.getFieldByName('gtg_is_empty'),
           notes: table.getFieldByName('Notes'),
         },
+        val: {},
+        stringVal: {},
         allViews: [],
         allFields: [],
       }
@@ -141,12 +147,11 @@ export class Schema {
             'Current Maximal Box #'
           ),
         },
+        val: {},
+        stringVal: {},
         allViews: [],
         allFields: [],
       }
-
-      this.boxDestinations.allViews = Object.values(this.boxDestinations.view)
-      this.boxDestinations.allFields = Object.values(this.boxDestinations.field)
     }
     {
       /**
@@ -170,19 +175,35 @@ export class Schema {
           //data
           skuQty: table.getFieldByName('SKU Qty'),
         },
+        val: {},
+        stringVal: {},
         allViews: [],
         allFields: [],
       }
-      this.boxLines.allViews = Object.values(this.boxLines.view)
-      this.boxLines.allFields = Object.values(this.boxLines.field)
+    }
+    for (const [key, schemaTable] of Object.entries(this)) {
+      if (key !== 'base') {
+        // it's a Schema Table
+        for (const [fieldKey, field] of Object.entries(schemaTable.field)) {
+          schemaTable.val[fieldKey] = (record: Record) => {
+            return record.getCellValue(field as Field)
+          }
+          schemaTable.stringVal[fieldKey] = (record: Record) => {
+            return record.getCellValueAsString(field as Field)
+          }
+        }
+        schemaTable.allViews = Object.values(schemaTable.view)
+        schemaTable.allFields = Object.values(schemaTable.field)
+      }
     }
   }
 }
-
 interface SchemaTable {
   table: Table
   view: SchemaTableViews
   field: SchemaTableFields
+  val: SchemaTableCellValueFunctions
+  stringVal: SchemaTableCellStringValueFunctions
   allViews: Array<View>
   allFields: Array<Field>
 }
@@ -193,4 +214,19 @@ interface SchemaTableViews {
 
 interface SchemaTableFields {
   [index: string]: Field
+}
+
+interface SchemaTableCellValueFunctions {
+  [index: string]: CellValueFunction
+}
+
+interface SchemaTableCellStringValueFunctions {
+  [index: string]: CellStringValueFunction
+}
+
+interface CellValueFunction {
+  (record: Record): any
+}
+interface CellStringValueFunction {
+  (record: Record): string
 }

@@ -1,9 +1,13 @@
 {
     "dependencies": {
         "@airtable/blocks": "1.1.0",
+        "@reduxjs/toolkit": "^1.4.0",
+        "moment": "^2.29.1",
         "react": "^16.9.0",
         "react-dom": "^16.9.0",
-        "react-redux": "^7.2.1"
+        "react-redux": "^7.2.1",
+        "redux-logger": "^3.0.6",
+        "redux-thunk": "^2.3.0"
     },
     "devDependencies": {
         "@types/react": "^16.9.51",

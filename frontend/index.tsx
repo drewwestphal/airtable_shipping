@@ -1,19 +1,20 @@
-import { initializeBlock } from '@airtable/blocks/ui'
+import { initializeBlock, ViewportConstraint } from '@airtable/blocks/ui'
 import React from 'react'
-import { createStore } from 'redux'
 import { Provider } from 'react-redux'
 
-//import { Schema } from './schema'
-import reducer, { initialState } from './store/reducer'
+import { Schema } from './schema'
+import { store } from './store/store'
 import { SearchBar } from './components/SearchBar'
+import { TrackingRecords } from './components/TrackingRecords'
 
 function HelloWorldTypescriptApp() {
-  const store = createStore(reducer, initialState)
-  //const schema = new Schema()
+  const schema = new Schema()
   // YOUR CODE GOES HERE
   return (
     <Provider store={store}>
-      <SearchBar></SearchBar>
+      <ViewportConstraint minSize={{ width: 800 }} />
+      <SearchBar />
+      <TrackingRecords schema={schema} />
     </Provider>
   )
 }
