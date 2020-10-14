@@ -135,15 +135,9 @@ const TrackingResultsImpl = ({
               const isReceived = schema.skuOrdersTracking.val.isReceivedRO(
                 trackingRecord
               )
-              const receivingNotes = schema.skuOrdersTracking.stringVal.receivingNotes(
-                trackingRecord
-              )
               const warehouseNotes = schema.skuOrdersTracking.stringVal.warehouseNotes(
                 trackingRecord
               )
-              const abbrev = (str: string) => {
-                return str.length < 100 ? str : str.substring(0, 99) + '...'
-              }
               const persistNotes = () =>
                 persistValueToRecordField({
                   table: schema.skuOrdersTracking.table,
