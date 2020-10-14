@@ -21,45 +21,8 @@ import { ApplicationState } from '../store/reducer'
 import moment from 'moment'
 import { PersistFieldToRecordArgs, TrackingDisplayChoice } from '../store/types'
 
-interface StateProps {
-  searchString: string
-  trackingReceiveDialogFocusedRecordId: string | null
-  warehouseNotesForDialog: string
-  trackingDisplayChoice: TrackingDisplayChoice
-}
-interface OwnProps {
-  schema: Schema
-  skuOrdersTrackingRecords: Record[]
-}
-
-interface DispatchProps {
-  warehouseNotesDidChange(str: string): void
-  persistValueToRecordField(args: PersistFieldToRecordArgs): void
-  trackingReceiveDialogShiftFocusToRecord(str: string): void
-  trackingReceiveDialogClose(): void
-  trackingDisplayChoiceDidChange(tdc: TrackingDisplayChoice): void
-}
-
-interface Props extends StateProps, DispatchProps, OwnProps {}
-
-const TrackingResultsImpl = ({
-  schema,
-  skuOrdersTrackingRecords,
-  searchString,
-  trackingReceiveDialogFocusedRecordId,
-  warehouseNotesForDialog,
-  trackingDisplayChoice,
-  trackingReceiveDialogShiftFocusToRecord,
-  trackingReceiveDialogClose,
-  warehouseNotesDidChange,
-  persistValueToRecordField,
-  trackingDisplayChoiceDidChange,
-}: Props) => {
-  const searchResults: Record[] = skuOrdersTrackingRecords.filter(
-    (trackingRecord) => {
-      return trackingRecord.name.includes(searchString)
-    }
-  )
+const TrackingResultsImpl = (props: Props) => {
+  const schema = props.schema
 
   return (
     <div>
@@ -67,10 +30,10 @@ const TrackingResultsImpl = ({
       <SelectButtons
         width={600}
         marginBottom={'16px'}
-        value={trackingDisplayChoice}
+        value={props.trackingDisplayChoice}
         // @ts-expect-error
         onChange={(newValue: TrackingDisplayChoice) =>
-          trackingDisplayChoiceDidChange(newValue)
+          props.trackingDisplayChoiceDidChange(newValue)
         }
         options={[
           {
@@ -104,200 +67,199 @@ const TrackingResultsImpl = ({
           </tr>
         </thead>
         <tbody>
-          {searchResults
-            .filter((trackingRecord) => {
-              switch (trackingDisplayChoice) {
-                case TrackingDisplayChoice.OnlySearch: {
-                  return searchString.trim().length > 0
-                }
-                case TrackingDisplayChoice.Unreceived: {
-                  return !schema.skuOrdersTracking.val.isReceivedRO(
-                    trackingRecord
-                  )
-                }
-                case TrackingDisplayChoice.Received: {
-                  return schema.skuOrdersTracking.val.isReceivedRO(
-                    trackingRecord
-                  )
-                }
-                default:
-                  return true
-              }
-            })
-            .map((trackingRecord) => {
-              const isReceived = schema.skuOrdersTracking.val.isReceivedRO(
-                trackingRecord
-              )
-              const warehouseNotes = schema.skuOrdersTracking.stringVal.warehouseNotes(
-                trackingRecord
-              )
-              const persistNotes = () =>
-                persistValueToRecordField({
-                  table: schema.skuOrdersTracking.table,
-                  field: schema.skuOrdersTracking.field.warehouseNotes,
-                  record: trackingRecord,
-                  val: warehouseNotesForDialog,
-                })
-              const toggleReceived = (dateTime: string | null) =>
-                persistValueToRecordField({
-                  table: schema.skuOrdersTracking.table,
-                  field: schema.skuOrdersTracking.field.receivedAtDateTime,
-                  record: trackingRecord,
-                  val: dateTime,
-                })
+          {props.skuOrdersTrackingSearchResults.map((trackingRecord) => {
+            const isReceived = schema.skuOrdersTracking.val.isReceivedRO(
+              trackingRecord
+            )
+            const warehouseNotes = schema.skuOrdersTracking.stringVal.warehouseNotes(
+              trackingRecord
+            )
+            const persistNotes = () =>
+              persistValueToRecordField({
+                table: schema.skuOrdersTracking.table,
+                field: schema.skuOrdersTracking.field.warehouseNotes,
+                record: trackingRecord,
+                val: props.warehouseNotesForDialog,
+              })
+            const toggleReceived = (dateTime: string | null) =>
+              persistValueToRecordField({
+                table: schema.skuOrdersTracking.table,
+                field: schema.skuOrdersTracking.field.receivedAtDateTime,
+                record: trackingRecord,
+                val: dateTime,
+              })
 
-              return (
-                <tr key={trackingRecord.id}>
-                  <td style={{ textAlign: 'center' }}>
-                    {isReceived ? '✅' : '❌'}
-                  </td>
-                  <td>
-                    <CellRenderer
-                      field={schema.skuOrdersTracking.field.trackingNumberPK}
-                      record={trackingRecord}
-                    />
-                  </td>
-                  <td style={{ width: '20%' }}>
-                    <CellRenderer
-                      field={schema.skuOrdersTracking.field.receivingNotes}
-                      record={trackingRecord}
-                    />
-                  </td>
-                  <td style={{ width: '20%' }}>
-                    <CellRenderer
-                      field={schema.skuOrdersTracking.field.warehouseNotes}
-                      record={trackingRecord}
-                    />
-                  </td>
-                  <td>
-                    <Button
-                      onClick={() => {
-                        // because we edit them in here
-                        warehouseNotesDidChange(warehouseNotes)
-                        trackingReceiveDialogShiftFocusToRecord(
-                          trackingRecord.id
-                        )
-                      }}
-                      icon={isReceived ? 'edit' : 'bolt'}
-                      variant={isReceived ? 'default' : 'primary'}
+            return (
+              <tr key={trackingRecord.id}>
+                <td style={{ textAlign: 'center' }}>
+                  {isReceived ? '✅' : '❌'}
+                </td>
+                <td>
+                  <CellRenderer
+                    field={schema.skuOrdersTracking.field.trackingNumberPK}
+                    record={trackingRecord}
+                  />
+                </td>
+                <td style={{ width: '20%' }}>
+                  <CellRenderer
+                    field={schema.skuOrdersTracking.field.receivingNotes}
+                    record={trackingRecord}
+                  />
+                </td>
+                <td style={{ width: '20%' }}>
+                  <CellRenderer
+                    field={schema.skuOrdersTracking.field.warehouseNotes}
+                    record={trackingRecord}
+                  />
+                </td>
+                <td>
+                  <Button
+                    onClick={() => {
+                      // because we edit them in here
+                      warehouseNotesDidChange(warehouseNotes)
+                      props.trackingReceiveDialogShiftFocusToRecord(
+                        trackingRecord.id
+                      )
+                    }}
+                    icon={isReceived ? 'edit' : 'bolt'}
+                    variant={isReceived ? 'default' : 'primary'}
+                  >
+                    {isReceived ? 'Edit/View ' : 'Receive '}
+                    {trackingRecord.name}
+                  </Button>
+
+                  {props.trackingReceiveDialogFocusedRecordId ===
+                    trackingRecord.id && (
+                    <Dialog
+                      width={800}
+                      paddingTop={'28px'}
+                      paddingX={'33px'}
+                      paddingBottom={'55px'}
+                      onClose={props.trackingReceiveDialogClose}
                     >
-                      {isReceived ? 'Edit/View ' : 'Receive '}
-                      {trackingRecord.name}
-                    </Button>
-
-                    {trackingReceiveDialogFocusedRecordId ===
-                      trackingRecord.id && (
-                      <Dialog
-                        width={800}
-                        paddingTop={'28px'}
-                        paddingX={'33px'}
-                        paddingBottom={'55px'}
-                        onClose={trackingReceiveDialogClose}
-                      >
-                        <Dialog.CloseButton />
-                        <Heading marginBottom={'17px'}>
-                          Receive tracking number {trackingRecord.name} ???
-                        </Heading>
-                        <Heading size="small">Review JoCo Notes</Heading>
-                        <Text variant="paragraph">
-                          <CellRenderer
-                            field={
-                              schema.skuOrdersTracking.field.receivingNotes
-                            }
-                            record={trackingRecord}
-                          />
-                        </Text>
-                        <Heading size="small">
-                          {isReceived ? 'Update' : 'Enter'} Warehouse Notes
-                        </Heading>
-
-                        <textarea
-                          value={warehouseNotesForDialog}
-                          onChange={(e) =>
-                            warehouseNotesDidChange(e.target.value)
-                          }
-                          cols={80}
-                          rows={3}
+                      <Dialog.CloseButton />
+                      <Heading marginBottom={'17px'}>
+                        Receive tracking number {trackingRecord.name} ???
+                      </Heading>
+                      <Heading size="small">Review JoCo Notes</Heading>
+                      <Text variant="paragraph">
+                        <CellRenderer
+                          field={schema.skuOrdersTracking.field.receivingNotes}
+                          record={trackingRecord}
                         />
-                        <Text
-                          marginBottom={'17px'}
-                          size="small"
-                          textColor="light"
-                        >
-                          Should this field be required?
-                        </Text>
-                        {isReceived ? (
-                          <Button
-                            variant="danger"
-                            marginRight={'12px'}
-                            icon="warning"
-                            onClick={() => {
-                              persistNotes()
-                              toggleReceived(null)
-                              trackingReceiveDialogClose()
-                            }}
-                          >
-                            Unreceive!
-                          </Button>
-                        ) : (
-                          ''
-                        )}
-                        <Button
-                          variant={isReceived ? 'default' : 'danger'}
-                          icon="x"
-                          marginRight={'12px'}
-                          onClick={() => trackingReceiveDialogClose()}
-                        >
-                          Cancel Everything!
-                        </Button>
-                        <Button
-                          icon="book"
-                          marginRight={'12px'}
-                          variant={isReceived ? 'primary' : 'default'}
-                          onClick={() => {
-                            //persistNotes()
-                            persistValueToRecordField({
-                              table: schema.skuOrdersTracking.table,
-                              field:
-                                schema.skuOrdersTracking.field.warehouseNotes,
-                              record: trackingRecord,
-                              val: warehouseNotesForDialog,
-                            })
+                      </Text>
+                      <Heading size="small">
+                        {isReceived ? 'Update' : 'Enter'} Warehouse Notes
+                      </Heading>
 
-                            trackingReceiveDialogClose()
+                      <textarea
+                        value={props.warehouseNotesForDialog}
+                        onChange={(e) =>
+                          warehouseNotesDidChange(e.target.value)
+                        }
+                        cols={80}
+                        rows={3}
+                      />
+                      <Text
+                        marginBottom={'17px'}
+                        size="small"
+                        textColor="light"
+                      >
+                        Should this field be required?
+                      </Text>
+                      {isReceived ? (
+                        <Button
+                          variant="danger"
+                          marginRight={'12px'}
+                          icon="warning"
+                          onClick={() => {
+                            persistNotes()
+                            toggleReceived(null)
+                            props.trackingReceiveDialogClose()
                           }}
                         >
-                          {isReceived
-                            ? `Update My Notes`
-                            : `Save my notes & Don't receive`}
+                          Unreceive!
                         </Button>
-                        {!isReceived ? (
-                          <Button
-                            variant="primary"
-                            marginRight={'12px'}
-                            icon="bell"
-                            onClick={() => {
-                              persistNotes()
-                              toggleReceived(moment().format())
-                              trackingReceiveDialogClose()
-                            }}
-                          >
-                            {`Recevez S'il Vous Plait`}
-                          </Button>
-                        ) : (
-                          ''
-                        )}
-                      </Dialog>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
+                      ) : (
+                        ''
+                      )}
+                      <Button
+                        variant={isReceived ? 'default' : 'danger'}
+                        icon="x"
+                        marginRight={'12px'}
+                        onClick={() => props.trackingReceiveDialogClose()}
+                      >
+                        Cancel Everything!
+                      </Button>
+                      <Button
+                        icon="book"
+                        marginRight={'12px'}
+                        variant={isReceived ? 'primary' : 'default'}
+                        onClick={() => {
+                          //persistNotes()
+                          persistValueToRecordField({
+                            table: schema.skuOrdersTracking.table,
+                            field:
+                              schema.skuOrdersTracking.field.warehouseNotes,
+                            record: trackingRecord,
+                            val: props.warehouseNotesForDialog,
+                          })
+
+                          props.trackingReceiveDialogClose()
+                        }}
+                      >
+                        {isReceived
+                          ? `Update My Notes`
+                          : `Save my notes & Don't receive`}
+                      </Button>
+                      {!isReceived ? (
+                        <Button
+                          variant="primary"
+                          marginRight={'12px'}
+                          icon="bell"
+                          onClick={() => {
+                            persistNotes()
+                            toggleReceived(moment().format())
+                            props.trackingReceiveDialogClose()
+                          }}
+                        >
+                          {`Recevez S'il Vous Plait`}
+                        </Button>
+                      ) : (
+                        ''
+                      )}
+                    </Dialog>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
 }
+interface StateProps {
+  searchString: string
+  trackingReceiveDialogFocusedRecordId: string | null
+  warehouseNotesForDialog: string
+  trackingDisplayChoice: TrackingDisplayChoice
+  skuOrdersTrackingSearchResults: Record[]
+}
+interface OwnProps {
+  schema: Schema
+  skuOrdersTrackingRecords: Record[]
+}
+
+interface DispatchProps {
+  warehouseNotesDidChange(str: string): void
+  persistValueToRecordField(args: PersistFieldToRecordArgs): void
+  trackingReceiveDialogShiftFocusToRecord(str: string): void
+  trackingReceiveDialogClose(): void
+  trackingDisplayChoiceDidChange(tdc: TrackingDisplayChoice): void
+}
+
+interface Props extends StateProps, DispatchProps, OwnProps {}
 
 export const TrackingRecords = connect<
   StateProps,
@@ -314,6 +276,29 @@ export const TrackingRecords = connect<
     trackingDisplayChoice: state.trackingDisplayChoice,
     schema: ownProps.schema,
     skuOrdersTrackingRecords: ownProps.skuOrdersTrackingRecords,
+    skuOrdersTrackingSearchResults: ownProps.skuOrdersTrackingRecords.filter(
+      (trackingRecord) => {
+        if (trackingRecord.name.includes(state.searchString)) {
+          switch (state.trackingDisplayChoice) {
+            case TrackingDisplayChoice.OnlySearch: {
+              return state.searchString.trim().length > 0
+            }
+            case TrackingDisplayChoice.Unreceived: {
+              return !ownProps.schema.skuOrdersTracking.val.isReceivedRO(
+                trackingRecord
+              )
+            }
+            case TrackingDisplayChoice.Received: {
+              return ownProps.schema.skuOrdersTracking.val.isReceivedRO(
+                trackingRecord
+              )
+            }
+            default:
+              return true
+          }
+        }
+      }
+    ),
   }),
   {
     trackingReceiveDialogShiftFocusToRecord: (idStr: string) => {

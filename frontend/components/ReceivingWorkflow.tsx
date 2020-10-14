@@ -7,119 +7,19 @@ import { skuOrderReceiveDialogSetFocus } from '../store/actions'
 import Record from '@airtable/blocks/dist/types/src/models/record'
 import {
   BoxToMake,
-  PotentialExtantBoxesForReceiving,
   ReceivableSkuOrder,
+  PotentialBoxesForReceiving,
 } from '../store/types'
-
-interface StateProps {
-  skuOrderReceiveDialogFocusedRecordId: string | null
-}
-interface OwnProps {
-  schema: Schema
-  skuOrderRecords: Record[]
-  emptyOrMaximalBoxRecords: Record[]
-  boxDestinationRecordsNeedingAMaxBox: Record[]
-}
-interface DispatchProps {
-  skuOrderReceiveDialogSetFocus(id: string | null): void
-}
-interface Props extends StateProps, DispatchProps, OwnProps {}
 
 const ReceivingWorkflowImpl = (props: Props) => {
   const schema = props.schema
   const bailOut = <span></span>
-  if (props.skuOrderReceiveDialogFocusedRecordId === null) {
+  if (
+    props.skuOrderReceiveDialogFocusedRecordId === null ||
+    props.receivableSkuOrder === null
+  ) {
     return bailOut
   }
-
-  // validate all the props we need are on this thing
-  const receivableSkuOrder: ReceivableSkuOrder | null = props.skuOrderRecords
-    .filter((skuOrder: Record) => {
-      return skuOrder.id === props.skuOrderReceiveDialogFocusedRecordId
-    })
-    .reduce(
-      (
-        accum: ReceivableSkuOrder | null,
-        skuOrder: Record
-      ): ReceivableSkuOrder | null => {
-        let rel: Array<{
-          id: string
-          name: string
-        }> = schema.skuOrders.val.boxDestRel(skuOrder)
-        // accum === null so we bailout after first finding
-        if (accum === null && rel.length > 0 && rel[0].id.length) {
-          return {
-            rec: skuOrder,
-            boxDestinationId: rel[0].id,
-            skuName: schema.skuOrders.stringVal.skuRel(skuOrder),
-          }
-        }
-        return accum
-      },
-      null
-    )
-
-  if (receivableSkuOrder === null) {
-    return bailOut
-  }
-
-  const myPotentialBoxes: PotentialExtantBoxesForReceiving = props.emptyOrMaximalBoxRecords
-    // get only box records for this destination
-    .filter((boxRecord: Record) => {
-      let rel: Array<{
-        id: string
-        name: string
-      }> = schema.boxes.val.boxDestRel(boxRecord)
-
-      if (rel.length > 0 && rel[0].id.length > 0) {
-        return rel[0].id === receivableSkuOrder.boxDestinationId
-      }
-      return false
-    })
-    .reduce(
-      (accum: PotentialExtantBoxesForReceiving, boxRecord: Record) => {
-        let isMax = schema.boxes.val.isMaxBox(boxRecord)
-        let isPenultimate = schema.boxes.val.isPenultimateBox(boxRecord)
-        let isEmpty = schema.boxes.val.isEmpty(boxRecord) as boolean
-
-        if (isMax) {
-          accum.extantMaxBox = boxRecord
-          accum.maxBoxIsEmpty = isEmpty
-        } else if (isPenultimate) {
-          accum.penultimateBox = boxRecord
-          accum.penultimateBoxIsEmpty = isEmpty
-        } else if (isEmpty) {
-          accum.emptyNonMaxBoxes.push(boxRecord)
-        }
-
-        return accum
-      },
-      {
-        extantMaxBox: null,
-        maxBoxIsEmpty: false,
-        penultimateBox: null,
-        penultimateBoxIsEmpty: false,
-        emptyNonMaxBoxes: [],
-        maxBoxToMake: props.boxDestinationRecordsNeedingAMaxBox
-          .filter((boxDestination: Record) => {
-            // only for this dest
-            return boxDestination.id === receivableSkuOrder.boxDestinationId
-          })
-          .reduce((accum: BoxToMake | null, boxDestRecord: Record) => {
-            if (accum !== null) {
-              // return first
-              return accum
-            }
-            return {
-              boxNumberOnly: schema.boxDestinations.val.currentMaximalBoxNumber(
-                boxDestRecord
-              ),
-              boxDestinationId: boxDestRecord.id,
-              notes: 'Created by receiving tool',
-            }
-          }, null),
-      }
-    )
 
   return (
     <div>
@@ -134,7 +34,9 @@ const ReceivingWorkflowImpl = (props: Props) => {
       >
         <Dialog.CloseButton />
         <Heading marginBottom={'17px'}>
-          {'Pick a box to receive ' + receivableSkuOrder.skuName + ' into'}
+          {'Pick a box to receive ' +
+            props.receivableSkuOrder.skuName +
+            ' into'}
         </Heading>
         <table
           // @ts-expect-error
@@ -156,6 +58,22 @@ const ReceivingWorkflowImpl = (props: Props) => {
   )
 }
 
+interface StateProps {
+  skuOrderReceiveDialogFocusedRecordId: string | null
+  receivableSkuOrder: ReceivableSkuOrder | null
+  potentialBoxesForReceiving: PotentialBoxesForReceiving
+}
+interface OwnProps {
+  schema: Schema
+  skuOrderRecords: Record[]
+  emptyOrMaximalBoxRecords: Record[]
+  boxDestinationRecordsNeedingAMaxBox: Record[]
+}
+interface DispatchProps {
+  skuOrderReceiveDialogSetFocus(id: string | null): void
+}
+interface Props extends StateProps, DispatchProps, OwnProps {}
+
 export const ReceivingWorkflow = connect<
   StateProps,
   DispatchProps,
@@ -163,14 +81,106 @@ export const ReceivingWorkflow = connect<
   ApplicationState
 >(
   // mapStateToProps
-  (state: ApplicationState, ownProps: OwnProps) => ({
-    schema: ownProps.schema,
-    skuOrderRecords: ownProps.skuOrderRecords,
-    emptyOrMaximalBoxes: ownProps.emptyOrMaximalBoxRecords,
-    boxDestinationRecordsNeedingAMaxBox:
-      ownProps.boxDestinationRecordsNeedingAMaxBox,
-    skuOrderReceiveDialogFocusedRecordId:
-      state.skuOrderReceiveDialogFocusedRecordId,
-  }),
+  (state: ApplicationState, ownProps: OwnProps) => {
+    let receivableSkuOrder: ReceivableSkuOrder | null = ownProps.skuOrderRecords
+      .filter((skuOrder: Record) => {
+        return skuOrder.id === state.skuOrderReceiveDialogFocusedRecordId
+      })
+      .reduce(
+        (
+          accum: ReceivableSkuOrder | null,
+          skuOrder: Record
+        ): ReceivableSkuOrder | null => {
+          let rel: Array<{
+            id: string
+            name: string
+          }> = ownProps.schema.skuOrders.val.boxDestRel(skuOrder)
+          // accum === null so we bailout after first finding
+          if (accum === null && rel.length > 0 && rel[0].id.length) {
+            return {
+              rec: skuOrder,
+              boxDestinationId: rel[0].id,
+              skuName: ownProps.schema.skuOrders.stringVal.skuRel(skuOrder),
+            }
+          }
+          return accum
+        },
+        null
+      )
+    return {
+      schema: ownProps.schema,
+      skuOrderRecords: ownProps.skuOrderRecords,
+      emptyOrMaximalBoxes: ownProps.emptyOrMaximalBoxRecords,
+      boxDestinationRecordsNeedingAMaxBox:
+        ownProps.boxDestinationRecordsNeedingAMaxBox,
+      skuOrderReceiveDialogFocusedRecordId:
+        state.skuOrderReceiveDialogFocusedRecordId,
+      receivableSkuOrder: receivableSkuOrder,
+      potentialBoxesForReceiving: ownProps.emptyOrMaximalBoxRecords
+        // get only box records for this destination
+        .filter((boxRecord: Record) => {
+          let rel: Array<{
+            id: string
+            name: string
+          }> = ownProps.schema.boxes.val.boxDestRel(boxRecord)
+
+          if (receivableSkuOrder && rel.length > 0 && rel[0].id.length > 0) {
+            return rel[0].id === receivableSkuOrder.boxDestinationId
+          }
+          return false
+        })
+        .reduce(
+          (accum: PotentialBoxesForReceiving, boxRecord: Record) => {
+            let isMax = ownProps.schema.boxes.val.isMaxBox(boxRecord)
+            let isPenultimate = ownProps.schema.boxes.val.isPenultimateBox(
+              boxRecord
+            )
+            let isEmpty = ownProps.schema.boxes.val.isEmpty(
+              boxRecord
+            ) as boolean
+
+            if (isMax) {
+              accum.extantMaxBox = boxRecord
+              accum.maxBoxIsEmpty = isEmpty
+            } else if (isPenultimate) {
+              accum.extantPenultimateBox = boxRecord
+              accum.penultimateBoxIsEmpty = isEmpty
+            } else if (isEmpty) {
+              accum.extantEmptyNonMaxBoxes.push(boxRecord)
+            }
+
+            return accum
+          },
+          {
+            extantMaxBox: null,
+            maxBoxIsEmpty: false,
+            extantPenultimateBox: null,
+            penultimateBoxIsEmpty: false,
+            extantEmptyNonMaxBoxes: [],
+            maxBoxToMake: ownProps.boxDestinationRecordsNeedingAMaxBox
+              .filter((boxDestination: Record) => {
+                // only for this dest
+                return (
+                  receivableSkuOrder &&
+                  boxDestination.id === receivableSkuOrder.boxDestinationId
+                )
+              })
+              .reduce((accum: BoxToMake | null, boxDestRecord: Record) => {
+                if (accum !== null) {
+                  // return first
+                  return accum
+                }
+                return {
+                  boxNumberOnly: ownProps.schema.boxDestinations.val.currentMaximalBoxNumber(
+                    boxDestRecord
+                  ),
+                  boxDestinationId: boxDestRecord.id,
+                  notes: 'Created by receiving tool',
+                }
+              }, null),
+          }
+        ),
+    }
+  },
   { skuOrderReceiveDialogSetFocus: skuOrderReceiveDialogSetFocus }
 )(ReceivingWorkflowImpl)

@@ -14,13 +14,13 @@ export interface PersistFieldToRecordArgs {
   record: Record
   val: any
 }
-export interface PotentialExtantBoxesForReceiving {
+export interface PotentialBoxesForReceiving {
   extantMaxBox: Record | null
-  maxBoxToMake: BoxToMake | null
   maxBoxIsEmpty: boolean
-  penultimateBox: Record | null
+  extantPenultimateBox: Record | null
   penultimateBoxIsEmpty: boolean
-  emptyNonMaxBoxes: Array<Record>
+  extantEmptyNonMaxBoxes: Array<Record>
+  maxBoxToMake: BoxToMake | null
 }
 
 export interface BoxToMake {

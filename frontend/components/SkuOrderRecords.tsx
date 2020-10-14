@@ -6,31 +6,8 @@ import React from 'react'
 import Record from '@airtable/blocks/dist/types/src/models/record'
 import { skuOrderReceiveDialogSetFocus } from '../store/actions'
 
-interface StateProps {
-  searchString: string
-  skuOrderReceiveDialogFocusedRecordId: string | null
-}
-interface OwnProps {
-  schema: Schema
-  skuOrderRecords: Record[]
-}
-interface DispatchProps {
-  skuOrderReceiveDialogSetFocus(id: string | null): void
-}
-interface Props extends StateProps, DispatchProps, OwnProps {}
-
 const SkuOrderRecordsImpl = (props: Props) => {
   const schema = props.schema
-  const searchResults: Record[] = props.skuOrderRecords.filter(
-    (skuOrder: Record) => {
-      return schema.skuOrders.stringVal
-        .trackingNumberRel(skuOrder)
-        .includes(props.searchString)
-    }
-  )
-  if (props.searchString.trim().length === 0) {
-    return <span></span>
-  }
   return (
     <div>
       <Heading marginTop={'22px'} size="xsmall">
@@ -53,7 +30,7 @@ const SkuOrderRecordsImpl = (props: Props) => {
           </tr>
         </thead>
         <tbody>
-          {searchResults.map((skuOrder: Record) => {
+          {props.skuOrderSearchResults.map((skuOrder: Record) => {
             const skuName = schema.skuOrders.stringVal.skuRel(skuOrder)
             const skuExpectQty = schema.skuOrders.val.quantityExpected(skuOrder)
             const skuDest = schema.skuOrders.stringVal.destinationPrefix(
@@ -132,6 +109,19 @@ const SkuOrderRecordsImpl = (props: Props) => {
   )
 }
 
+interface StateProps {
+  skuOrderReceiveDialogFocusedRecordId: string | null
+  skuOrderSearchResults: Record[]
+}
+interface OwnProps {
+  schema: Schema
+  skuOrderRecords: Record[]
+}
+interface DispatchProps {
+  skuOrderReceiveDialogSetFocus(id: string | null): void
+}
+interface Props extends StateProps, DispatchProps, OwnProps {}
+
 export const SkuOrderRecords = connect<
   StateProps,
   DispatchProps,
@@ -141,8 +131,16 @@ export const SkuOrderRecords = connect<
   // mapStateToProps
   (state: ApplicationState, ownProps: OwnProps) => ({
     schema: ownProps.schema,
-    skuOrderRecords: ownProps.skuOrderRecords,
-
+    skuOrderSearchResults: ownProps.skuOrderRecords.filter(
+      (skuOrder: Record) => {
+        if (state.searchString.trim().length === 0) {
+          return false
+        }
+        return ownProps.schema.skuOrders.stringVal
+          .trackingNumberRel(skuOrder)
+          .includes(state.searchString)
+      }
+    ),
     searchString: state.searchString,
     skuOrderReceiveDialogFocusedRecordId:
       state.skuOrderReceiveDialogFocusedRecordId,
