@@ -101,8 +101,8 @@ export class Schema {
       this.boxes = {
         table: table,
         view: {
-          emptyOrMaximalBoxes: table.getViewByName(
-            'gtg_empty_penultimate_or_max_boxes'
+          packableBoxes: table.getViewByName(
+            'gtg_empty_toggled_penultimate_or_max_boxes'
           ),
           emptyBoxesOnly: table.getViewByName('gtg_empty_boxes_only'),
         },
@@ -114,6 +114,9 @@ export class Schema {
           boxNumberOnly: table.getFieldByName('# Only'),
           //data
           isMaxBox: table.getFieldByName('gtg_is_max_box'),
+          isToggledForPacking: table.getFieldByName(
+            'gtg_is_user_toggled_for_packing'
+          ),
           isPenultimateBox: table.getFieldByName('gtg_is_penultimate_box'),
           isEmpty: table.getFieldByName('gtg_is_empty'),
           notes: table.getFieldByName('Notes'),
@@ -148,6 +151,9 @@ export class Schema {
           currentMaximalBoxNumber: table.getFieldByName(
             'Current Maximal Box #'
           ),
+          destinationPrefix: table.getFieldByName('Prefix'),
+          boxOffset: table.getFieldByName('Box Offset'),
+          isSerialBox: table.getFieldByName('Serial Box?'),
         },
         val: {},
         stringVal: {},

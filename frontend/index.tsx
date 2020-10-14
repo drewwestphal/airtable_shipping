@@ -42,17 +42,21 @@ function App() {
     }
   )
 
-  const emptyOrMaximalBoxRecords: Record[] = useRecords(
-    schema.boxes.view.emptyOrMaximalBoxes,
+  const packableBoxRecords: Record[] = useRecords(
+    schema.boxes.view.packableBoxes,
     {
       fields: schema.boxes.allFields,
     }
   )
 
-  const boxDestinationRecordsNeedingAMaxBox: Record[] = useRecords(
-    schema.boxDestinations.view.destNeedsEmptyMaxBox,
+  const boxDestinationRecords: Record[] = useRecords(
+    schema.boxDestinations.table,
     { fields: schema.boxDestinations.allFields }
   )
+
+  const boxRecordsOnlyDestLoaded: Record[] = useRecords(schema.boxes.table, {
+    fields: [schema.boxes.field.boxDestRel],
+  })
 
   return (
     <Provider store={store}>
@@ -66,10 +70,9 @@ function App() {
       <ReceivingWorkflow
         schema={schema}
         skuOrderRecords={skuOrderRecords}
-        emptyOrMaximalBoxRecords={emptyOrMaximalBoxRecords}
-        boxDestinationRecordsNeedingAMaxBox={
-          boxDestinationRecordsNeedingAMaxBox
-        }
+        packableBoxRecords={packableBoxRecords}
+        boxDestinationRecords={boxDestinationRecords}
+        boxRecordsOnlyDestLoaded={boxRecordsOnlyDestLoaded}
       />
     </Provider>
   )

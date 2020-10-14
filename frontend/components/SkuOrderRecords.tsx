@@ -4,7 +4,7 @@ import { Schema } from '../schema'
 import { ApplicationState } from '../store/reducer'
 import React from 'react'
 import Record from '@airtable/blocks/dist/types/src/models/record'
-import { skuOrderReceiveDialogSetFocus } from '../store/actions'
+import { skuReceivingSetSkuOrderFocus } from '../store/actions'
 
 const SkuOrderRecordsImpl = (props: Props) => {
   const schema = props.schema
@@ -85,7 +85,7 @@ const SkuOrderRecordsImpl = (props: Props) => {
                 <td>
                   <Button
                     onClick={() =>
-                      props.skuOrderReceiveDialogSetFocus(skuOrder.id)
+                      props.skuReceivingSetSkuOrderFocus(skuOrder.id)
                     }
                     variant="primary"
                     icon="edit"
@@ -118,7 +118,7 @@ interface OwnProps {
   skuOrderRecords: Record[]
 }
 interface DispatchProps {
-  skuOrderReceiveDialogSetFocus(id: string | null): void
+  skuReceivingSetSkuOrderFocus(id: string | null): void
 }
 interface Props extends StateProps, DispatchProps, OwnProps {}
 
@@ -143,7 +143,7 @@ export const SkuOrderRecords = connect<
     ),
     searchString: state.searchString,
     skuOrderReceiveDialogFocusedRecordId:
-      state.skuOrderReceiveDialogFocusedRecordId,
+      state.skuReceivingDialogFocusedSkuOrderId,
   }),
-  { skuOrderReceiveDialogSetFocus: skuOrderReceiveDialogSetFocus }
+  { skuReceivingSetSkuOrderFocus: skuReceivingSetSkuOrderFocus }
 )(SkuOrderRecordsImpl)

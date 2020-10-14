@@ -3,12 +3,16 @@ import { connect } from 'react-redux'
 import { Schema } from '../schema'
 import { ApplicationState } from '../store/reducer'
 import React from 'react'
-import { skuOrderReceiveDialogSetFocus } from '../store/actions'
+import {
+  skuReceivingSetBoxFocus,
+  skuReceivingSetSkuOrderFocus,
+} from '../store/actions'
 import Record from '@airtable/blocks/dist/types/src/models/record'
 import {
   BoxToMake,
   ReceivableSkuOrder,
   PotentialBoxesForReceiving,
+  UserSelectableBox,
 } from '../store/types'
 
 const ReceivingWorkflowImpl = (props: Props) => {
@@ -21,6 +25,82 @@ const ReceivingWorkflowImpl = (props: Props) => {
     return bailOut
   }
 
+  const recordToUSB = (
+    box: Record,
+    status: string,
+    isEmpty: boolean
+  ): UserSelectableBox => {
+    return {
+      root: { recordId: box.id },
+      boxName: box.name,
+      boxStatus: status,
+      boxIsEmpty: isEmpty,
+      boxNotes: schema.boxes.stringVal.notes(box),
+    }
+  }
+  const boxToMakeToUSB = (
+    btm: BoxToMake,
+    boxDestination: Record
+  ): UserSelectableBox => {
+    let boxPrefix = schema.boxDestinations.stringVal.destinationPrefix(
+      boxDestination
+    )
+    let boxOffset = schema.boxDestinations.val.boxOffset(boxDestination)
+    let numericPortionStrlen = schema.boxDestinations.val.isSerialBox(
+      boxDestination
+    )
+    let boxNumberOnly = ((1 +
+      schema.boxDestinations.val.currentMaximalBoxNumber(
+        boxDestination
+      )) as number)
+      ? 2
+      : 3
+    return {
+      root: {
+        boxNumberOnly: boxNumberOnly,
+        boxDestinationId: boxDestination.id,
+        notes: 'Created by Receiving Tool',
+      },
+      boxName:
+        boxPrefix +
+        '-' +
+        String(boxNumberOnly + boxOffset)
+          .padStart(4, '0')
+          .slice(numericPortionStrlen * -1),
+      boxStatus: 'Box will be created if selected',
+      boxIsEmpty: true,
+      boxNotes: '',
+    }
+  }
+  const selectBoxButton = (
+    usb: UserSelectableBox,
+    variant: 'default' | 'primary' | 'secondary' | 'danger'
+  ) => {
+    return (
+      <Button
+        variant={variant}
+        onClick={() => {
+          props.skuReceivingSetBoxFocus(usb.root)
+        }}
+      >
+        {usb.boxName}
+      </Button>
+    )
+  }
+  const usbToTr = (
+    usb: UserSelectableBox,
+    variant: 'default' | 'primary' | 'secondary' | 'danger'
+  ) => {
+    return (
+      <tr>
+        <td>{selectBoxButton(usb, variant)}</td>
+        <td>{usb.boxName}</td>
+        <td>{usb.boxStatus}</td>
+        <td>{usb.boxIsEmpty}</td>
+        <td>{usb.boxNotes}</td>
+      </tr>
+    )
+  }
   return (
     <div>
       <Dialog
@@ -29,7 +109,7 @@ const ReceivingWorkflowImpl = (props: Props) => {
         paddingX={'33px'}
         paddingBottom={'55px'}
         onClose={() => {
-          props.skuOrderReceiveDialogSetFocus(null)
+          props.skuReceivingSetSkuOrderFocus(null)
         }}
       >
         <Dialog.CloseButton />
@@ -51,7 +131,27 @@ const ReceivingWorkflowImpl = (props: Props) => {
               <th>Notes</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody>
+            {props.potentialBoxesForReceiving.extantMaxBox
+              ? usbToTr(
+                  recordToUSB(
+                    props.potentialBoxesForReceiving.extantMaxBox,
+                    'The highest numbered box around (you were probably packing this last)',
+                    props.potentialBoxesForReceiving.maxBoxIsEmpty
+                  ),
+                  'primary'
+                )
+              : ''}
+            {props.potentialBoxesForReceiving.maxBoxToMake
+              ? usbToTr(
+                  boxToMakeToUSB(
+                    props.potentialBoxesForReceiving.maxBoxToMake,
+                    props.receivableSkuOrder.boxDestination
+                  ),
+                  'primary'
+                )
+              : ''}
+          </tbody>
         </table>
       </Dialog>
     </div>
@@ -66,11 +166,13 @@ interface StateProps {
 interface OwnProps {
   schema: Schema
   skuOrderRecords: Record[]
-  emptyOrMaximalBoxRecords: Record[]
-  boxDestinationRecordsNeedingAMaxBox: Record[]
+  packableBoxRecords: Record[]
+  boxDestinationRecords: Record[]
+  boxRecordsOnlyDestLoaded: Record[]
 }
 interface DispatchProps {
-  skuOrderReceiveDialogSetFocus(id: string | null): void
+  skuReceivingSetSkuOrderFocus: typeof skuReceivingSetSkuOrderFocus
+  skuReceivingSetBoxFocus: typeof skuReceivingSetBoxFocus
 }
 interface Props extends StateProps, DispatchProps, OwnProps {}
 
@@ -84,7 +186,7 @@ export const ReceivingWorkflow = connect<
   (state: ApplicationState, ownProps: OwnProps) => {
     let receivableSkuOrder: ReceivableSkuOrder | null = ownProps.skuOrderRecords
       .filter((skuOrder: Record) => {
-        return skuOrder.id === state.skuOrderReceiveDialogFocusedRecordId
+        return skuOrder.id === state.skuReceivingDialogFocusedSkuOrderId
       })
       .reduce(
         (
@@ -97,10 +199,22 @@ export const ReceivingWorkflow = connect<
           }> = ownProps.schema.skuOrders.val.boxDestRel(skuOrder)
           // accum === null so we bailout after first finding
           if (accum === null && rel.length > 0 && rel[0].id.length) {
-            return {
-              rec: skuOrder,
-              boxDestinationId: rel[0].id,
-              skuName: ownProps.schema.skuOrders.stringVal.skuRel(skuOrder),
+            let boxDestinationId = rel[0].id
+            let boxDestRecord = ownProps.boxDestinationRecords.reduce(
+              (accum: Record | null, boxDestRecord: Record) => {
+                if (boxDestinationId === boxDestRecord.id) {
+                  return boxDestRecord
+                }
+                return accum
+              },
+              null
+            )
+            if (boxDestRecord !== null) {
+              return {
+                rec: skuOrder,
+                boxDestination: boxDestRecord,
+                skuName: ownProps.schema.skuOrders.stringVal.skuRel(skuOrder),
+              }
             }
           }
           return accum
@@ -110,13 +224,12 @@ export const ReceivingWorkflow = connect<
     return {
       schema: ownProps.schema,
       skuOrderRecords: ownProps.skuOrderRecords,
-      emptyOrMaximalBoxes: ownProps.emptyOrMaximalBoxRecords,
-      boxDestinationRecordsNeedingAMaxBox:
-        ownProps.boxDestinationRecordsNeedingAMaxBox,
+      emptyOrMaximalBoxes: ownProps.packableBoxRecords,
+      boxDestinationRecordsNeedingAMaxBox: ownProps.boxDestinationRecords,
       skuOrderReceiveDialogFocusedRecordId:
-        state.skuOrderReceiveDialogFocusedRecordId,
+        state.skuReceivingDialogFocusedSkuOrderId,
       receivableSkuOrder: receivableSkuOrder,
-      potentialBoxesForReceiving: ownProps.emptyOrMaximalBoxRecords
+      potentialBoxesForReceiving: ownProps.packableBoxRecords
         // get only box records for this destination
         .filter((boxRecord: Record) => {
           let rel: Array<{
@@ -125,7 +238,7 @@ export const ReceivingWorkflow = connect<
           }> = ownProps.schema.boxes.val.boxDestRel(boxRecord)
 
           if (receivableSkuOrder && rel.length > 0 && rel[0].id.length > 0) {
-            return rel[0].id === receivableSkuOrder.boxDestinationId
+            return rel[0].id === receivableSkuOrder.boxDestination.id
           }
           return false
         })
@@ -138,7 +251,9 @@ export const ReceivingWorkflow = connect<
             let isEmpty = ownProps.schema.boxes.val.isEmpty(
               boxRecord
             ) as boolean
-
+            let isUserSelected = ownProps.schema.boxes.val.isToggledForPacking(
+              boxRecord
+            ) as boolean
             if (isMax) {
               accum.extantMaxBox = boxRecord
               accum.maxBoxIsEmpty = isEmpty
@@ -147,6 +262,8 @@ export const ReceivingWorkflow = connect<
               accum.penultimateBoxIsEmpty = isEmpty
             } else if (isEmpty) {
               accum.extantEmptyNonMaxBoxes.push(boxRecord)
+            } else if (isUserSelected) {
+              accum.extantNonEmptyUserSelectedBoxes.push(boxRecord)
             }
 
             return accum
@@ -157,12 +274,13 @@ export const ReceivingWorkflow = connect<
             extantPenultimateBox: null,
             penultimateBoxIsEmpty: false,
             extantEmptyNonMaxBoxes: [],
-            maxBoxToMake: ownProps.boxDestinationRecordsNeedingAMaxBox
+            extantNonEmptyUserSelectedBoxes: [],
+            maxBoxToMake: ownProps.boxDestinationRecords
               .filter((boxDestination: Record) => {
                 // only for this dest
                 return (
                   receivableSkuOrder &&
-                  boxDestination.id === receivableSkuOrder.boxDestinationId
+                  boxDestination.id === receivableSkuOrder.boxDestination.id
                 )
               })
               .reduce((accum: BoxToMake | null, boxDestRecord: Record) => {
@@ -182,5 +300,8 @@ export const ReceivingWorkflow = connect<
         ),
     }
   },
-  { skuOrderReceiveDialogSetFocus: skuOrderReceiveDialogSetFocus }
+  {
+    skuReceivingSetSkuOrderFocus: skuReceivingSetSkuOrderFocus,
+    skuReceivingSetBoxFocus: skuReceivingSetBoxFocus,
+  }
 )(ReceivingWorkflowImpl)
