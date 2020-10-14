@@ -2,7 +2,7 @@ import { FormField, Input } from '@airtable/blocks/ui'
 import React from 'react'
 import { connect } from 'react-redux'
 import { searchBarValueDidChange } from '../store/actions'
-import { ApplicationState } from '../store/types'
+import { ApplicationState } from '../store/reducer'
 
 interface Props {
   searchString: string

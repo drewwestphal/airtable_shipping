@@ -38,7 +38,7 @@ export class Schema {
           //rel
           skuOrdersRel: table.getFieldByName('SKU Orders'),
           //data
-          isTrackingNumberReceivedRO: table.getFieldByName(
+          isReceivedRO: table.getFieldByName(
             'gtg_was_tracking_number_received'
           ),
           receivedAtDateTime: table.getFieldByName('Date Received'),

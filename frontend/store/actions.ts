@@ -1,9 +1,12 @@
-import Field from '@airtable/blocks/dist/types/src/models/field'
-import Record from '@airtable/blocks/dist/types/src/models/record'
-import Table from '@airtable/blocks/dist/types/src/models/table'
 import { createAction, createAsyncThunk } from '@reduxjs/toolkit'
+import { PersistFieldToRecordArgs, TrackingDisplayChoice } from './types'
 
 export const searchBarValueDidChange = createAction<string>('search/value')
+
+export const trackingDisplayChoiceDidChange = createAction<
+  TrackingDisplayChoice
+>('search/displaychoice')
+
 export const trackingReceiveDialogSetFocus = createAction<string | null>(
   'tracking/dialogfocus'
 )
@@ -11,12 +14,6 @@ export const warehouseNotesDidChange = createAction<string>(
   'tracking/warehouseNotes'
 )
 
-export interface PersistFieldToRecordArgs {
-  table: Table
-  field: Field
-  record: Record
-  val: any
-}
 export const persistValueToRecordField = createAsyncThunk(
   'util/persistfield',
   // Declare the type your function argument here:
