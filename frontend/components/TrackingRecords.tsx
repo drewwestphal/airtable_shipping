@@ -29,6 +29,7 @@ interface StateProps {
 }
 interface OwnProps {
   schema: Schema
+  skuOrdersTrackingRecords: Record[]
 }
 
 interface DispatchProps {
@@ -43,6 +44,7 @@ interface Props extends StateProps, DispatchProps, OwnProps {}
 
 const TrackingResultsImpl = ({
   schema,
+  skuOrdersTrackingRecords,
   searchString,
   trackingReceiveDialogFocusedRecordId,
   warehouseNotesForDialog,
@@ -53,20 +55,11 @@ const TrackingResultsImpl = ({
   persistValueToRecordField,
   trackingDisplayChoiceDidChange,
 }: Props) => {
-  const searchResults: Record[] = useRecords(
-    schema.skuOrdersTracking.view.hasTrackingNumber,
-    {
-      fields: schema.skuOrdersTracking.allFields,
-      sorts: [
-        {
-          field: schema.skuOrdersTracking.field.isReceivedRO,
-          direction: 'asc',
-        },
-      ],
+  const searchResults: Record[] = skuOrdersTrackingRecords.filter(
+    (trackingRecord) => {
+      return trackingRecord.name.includes(searchString)
     }
-  ).filter((trackingRecord) => {
-    return trackingRecord.name.includes(searchString)
-  })
+  )
 
   return (
     <div>
@@ -320,6 +313,7 @@ export const TrackingRecords = connect<
     warehouseNotesForDialog: state.warehouseNotes,
     trackingDisplayChoice: state.trackingDisplayChoice,
     schema: ownProps.schema,
+    skuOrdersTrackingRecords: ownProps.skuOrdersTrackingRecords,
   }),
   {
     trackingReceiveDialogShiftFocusToRecord: (idStr: string) => {

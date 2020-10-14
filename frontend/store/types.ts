@@ -14,3 +14,22 @@ export interface PersistFieldToRecordArgs {
   record: Record
   val: any
 }
+export interface PotentialExtantBoxesForReceiving {
+  extantMaxBox: Record | null
+  maxBoxToMake: BoxToMake | null
+  maxBoxIsEmpty: boolean
+  penultimateBox: Record | null
+  penultimateBoxIsEmpty: boolean
+  emptyNonMaxBoxes: Array<Record>
+}
+
+export interface BoxToMake {
+  boxNumberOnly: number
+  boxDestinationId: string
+  notes: string
+}
+export interface ReceivableSkuOrder {
+  rec: Record
+  boxDestinationId: string
+  skuName: string
+}

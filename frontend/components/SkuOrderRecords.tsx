@@ -12,6 +12,7 @@ interface StateProps {
 }
 interface OwnProps {
   schema: Schema
+  skuOrderRecords: Record[]
 }
 interface DispatchProps {
   skuOrderReceiveDialogSetFocus(id: string | null): void
@@ -20,22 +21,13 @@ interface Props extends StateProps, DispatchProps, OwnProps {}
 
 const SkuOrderRecordsImpl = (props: Props) => {
   const schema = props.schema
-  const searchResults: Record[] = useRecords(
-    schema.skuOrders.view.hasTrackingNumber,
-    {
-      fields: schema.skuOrders.allFields,
-      sorts: [
-        {
-          field: schema.skuOrders.field.destinationPrefix,
-          direction: 'desc',
-        },
-      ],
+  const searchResults: Record[] = props.skuOrderRecords.filter(
+    (skuOrder: Record) => {
+      return schema.skuOrders.stringVal
+        .trackingNumberRel(skuOrder)
+        .includes(props.searchString)
     }
-  ).filter((skuOrder: Record) => {
-    return schema.skuOrders.stringVal
-      .trackingNumberRel(skuOrder)
-      .includes(props.searchString)
-  })
+  )
   if (props.searchString.trim().length === 0) {
     return <span></span>
   }
@@ -62,7 +54,7 @@ const SkuOrderRecordsImpl = (props: Props) => {
         </thead>
         <tbody>
           {searchResults.map((skuOrder: Record) => {
-            const skuName = schema.skuOrders.stringVal.skuOrderPK(skuOrder)
+            const skuName = schema.skuOrders.stringVal.skuRel(skuOrder)
             const skuExpectQty = schema.skuOrders.val.quantityExpected(skuOrder)
             const skuDest = schema.skuOrders.stringVal.destinationPrefix(
               skuOrder
@@ -109,7 +101,7 @@ const SkuOrderRecordsImpl = (props: Props) => {
                 </td>
                 <td>
                   <CellRenderer
-                    field={schema.skuOrders.field.boxDestinationRel}
+                    field={schema.skuOrders.field.boxDestRel}
                     record={skuOrder}
                   />
                 </td>
@@ -149,6 +141,7 @@ export const SkuOrderRecords = connect<
   // mapStateToProps
   (state: ApplicationState, ownProps: OwnProps) => ({
     schema: ownProps.schema,
+    skuOrderRecords: ownProps.skuOrderRecords,
 
     searchString: state.searchString,
     skuOrderReceiveDialogFocusedRecordId:

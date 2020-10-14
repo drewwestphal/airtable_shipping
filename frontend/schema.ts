@@ -72,7 +72,7 @@ export class Schema {
           trackingNumberRel: table.getFieldByName('Tracking Number'),
           orderRel: table.getFieldByName('Order'),
           skuRel: table.getFieldByName('SKU'),
-          boxDestinationRel: table.getFieldByName('Onboard Destination'),
+          boxDestRel: table.getFieldByName('Onboard Destination'),
           // data
           //trackingNumberReceived: table.getFieldByName('Tracking # Received?'),
           quantityExpected: table.getFieldByName('Quantity Ordered'),
@@ -110,7 +110,7 @@ export class Schema {
           //pk
           boxNumberPK: table.primaryField,
           //rel
-          onboardDestinationRel: table.getFieldByName('Onboard Destination'),
+          boxDestRel: table.getFieldByName('Onboard Destination'),
           boxNumberOnly: table.getFieldByName('# Only'),
           //data
           isMaxBox: table.getFieldByName('gtg_is_max_box'),
