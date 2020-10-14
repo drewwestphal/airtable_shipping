@@ -5,6 +5,7 @@ import {
   Heading,
   Text,
   SelectButtons,
+  CellRenderer,
 } from '@airtable/blocks/ui'
 import React from 'react'
 import { connect } from 'react-redux'
@@ -163,9 +164,24 @@ const TrackingResultsImpl = ({
                   <td style={{ textAlign: 'center' }}>
                     {isReceived ? '✅' : '❌'}
                   </td>
-                  <td>{trackingRecord.name}</td>
-                  <td style={{ width: '20%' }}>{abbrev(receivingNotes)}</td>
-                  <td style={{ width: '20%' }}>{abbrev(warehouseNotes)}</td>
+                  <td>
+                    <CellRenderer
+                      field={schema.skuOrdersTracking.field.trackingNumberPK}
+                      record={trackingRecord}
+                    />
+                  </td>
+                  <td style={{ width: '20%' }}>
+                    <CellRenderer
+                      field={schema.skuOrdersTracking.field.receivingNotes}
+                      record={trackingRecord}
+                    />
+                  </td>
+                  <td style={{ width: '20%' }}>
+                    <CellRenderer
+                      field={schema.skuOrdersTracking.field.warehouseNotes}
+                      record={trackingRecord}
+                    />
+                  </td>
                   <td>
                     <Button
                       onClick={() => {
@@ -178,7 +194,7 @@ const TrackingResultsImpl = ({
                       icon={isReceived ? 'edit' : 'bolt'}
                       variant={isReceived ? 'default' : 'primary'}
                     >
-                      {isReceived ? 'Edit/View' : 'Receive'}{' '}
+                      {isReceived ? 'Edit/View ' : 'Receive '}
                       {trackingRecord.name}
                     </Button>
 
@@ -196,7 +212,14 @@ const TrackingResultsImpl = ({
                           Receive tracking number {trackingRecord.name} ???
                         </Heading>
                         <Heading size="small">Review JoCo Notes</Heading>
-                        <Text variant="paragraph">{receivingNotes}</Text>
+                        <Text variant="paragraph">
+                          <CellRenderer
+                            field={
+                              schema.skuOrdersTracking.field.receivingNotes
+                            }
+                            record={trackingRecord}
+                          />
+                        </Text>
                         <Heading size="small">
                           {isReceived ? 'Update' : 'Enter'} Warehouse Notes
                         </Heading>
