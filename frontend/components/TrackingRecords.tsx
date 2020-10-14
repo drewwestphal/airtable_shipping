@@ -97,14 +97,8 @@ const TrackingResultsImpl = ({
           },
         ]}
       />
-      <table
-        // @ts-expect-error
+      <table // @ts-expect-error
         border={1}
-        style={{
-          border: '1px solid #000',
-          tableLayout: 'fixed',
-          maxWidth: '100%',
-        }}
       >
         <thead>
           <tr>

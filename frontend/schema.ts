@@ -62,7 +62,9 @@ export class Schema {
       let table = base.getTableByName('SKU Orders')
       this.skuOrders = {
         table: table,
-        view: {},
+        view: {
+          hasTrackingNumber: table.getViewByName('gtg_has_tracking_number'),
+        },
         field: {
           // pk
           skuOrderPK: table.primaryField,
@@ -73,7 +75,7 @@ export class Schema {
           boxDestinationRel: table.getFieldByName('Onboard Destination'),
           // data
           //trackingNumberReceived: table.getFieldByName('Tracking # Received?'),
-          quantityOrdered: table.getFieldByName('Quantity Ordered'),
+          quantityExpected: table.getFieldByName('Quantity Ordered'),
           quantityPacked: table.getFieldByName('gtg_packed_qty'),
           boxedCheckbox: table.getFieldByName('Boxed?'),
           externalProductName: table.getFieldByName('External Product Name'),

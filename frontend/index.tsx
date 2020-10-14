@@ -6,6 +6,7 @@ import { Schema } from './schema'
 import { store } from './store/store'
 import { SearchBar } from './components/SearchBar'
 import { TrackingRecords } from './components/TrackingRecords'
+import { SkuOrderRecords } from './components/SkuOrderRecords'
 
 function HelloWorldTypescriptApp() {
   const schema = new Schema()
@@ -15,6 +16,7 @@ function HelloWorldTypescriptApp() {
       <ViewportConstraint minSize={{ width: 800 }} />
       <SearchBar />
       <TrackingRecords schema={schema} />
+      <SkuOrderRecords schema={schema} />
     </Provider>
   )
 }

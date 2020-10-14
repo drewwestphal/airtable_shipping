@@ -1,6 +1,7 @@
 import { createReducer, PayloadAction } from '@reduxjs/toolkit'
 import {
   searchBarValueDidChange,
+  skuOrderReceiveDialogSetFocus,
   trackingDisplayChoiceDidChange,
   trackingReceiveDialogSetFocus,
   warehouseNotesDidChange,
@@ -10,6 +11,7 @@ import { TrackingDisplayChoice } from './types'
 export interface ApplicationState {
   searchString: string
   trackingReceiveDialogFocusedRecordId: string | null
+  skuOrderReceiveDialogFocusedRecordId: string | null
   warehouseNotes: string
   trackingDisplayChoice: TrackingDisplayChoice
 }
@@ -17,6 +19,7 @@ export interface ApplicationState {
 export const initialState: ApplicationState = {
   searchString: '',
   trackingReceiveDialogFocusedRecordId: null,
+  skuOrderReceiveDialogFocusedRecordId: null,
   warehouseNotes: '',
   trackingDisplayChoice: TrackingDisplayChoice.OnlySearch,
 }
@@ -53,6 +56,15 @@ const reducer = createReducer(initialState, (builder) =>
         return {
           ...state,
           warehouseNotes: action.payload,
+        }
+      }
+    )
+    .addCase(
+      skuOrderReceiveDialogSetFocus,
+      (state: ApplicationState, action: PayloadAction<string | null>) => {
+        return {
+          ...state,
+          skuOrderReceiveDialogFocusedRecordId: action.payload,
         }
       }
     )

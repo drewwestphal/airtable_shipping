@@ -13,6 +13,9 @@ export const trackingReceiveDialogSetFocus = createAction<string | null>(
 export const warehouseNotesDidChange = createAction<string>(
   'tracking/warehouseNotes'
 )
+export const skuOrderReceiveDialogSetFocus = createAction<string | null>(
+  'skuOrder/dialogfocus'
+)
 
 export const persistValueToRecordField = createAsyncThunk(
   'util/persistfield',
