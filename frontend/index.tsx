@@ -16,10 +16,13 @@ import { ReceivingWorkflow } from './components/ReceivingWorkflow'
 import Record from '@airtable/blocks/dist/types/src/models/record'
 import { SkuOrderTrackingNumberRoot } from './airtable/SkuOrderTrackingNumber'
 import { SkuOrderTracking } from './schema/SkuOrderTracking'
+import { SkuOrder } from './schema/SkuOrder'
+import { BoxDestination } from './schema/BoxDestination'
+import { Box } from './schema/Box'
 function App() {
   const schema = new Schema()
 
-  const skuOrdersTrackings = SkuOrderTracking.useWrappedRecords(
+  const skuOrdersTrackings = SkuOrderTracking.useWrapped(
     schema,
     schema.skuOrdersTracking.view.hasTrackingNumber,
     {
@@ -30,35 +33,30 @@ function App() {
           direction: 'asc',
         },
       ],
-    },
-    (schema, record) => {
-      return new SkuOrderTracking(schema, record)
     }
   )
 
-  // we use these records here but really airtable
-  useRecords(schema.skuOrders.view.hasTrackingNumber, {
-    fields: schema.skuOrders.allFields,
-    sorts: [
-      {
-        field: schema.skuOrders.field.destinationPrefix,
-        direction: 'desc',
-      },
-    ],
+  /**
+   * follow (AND USE) the whole tree now
+   * we start large and the tree shrinks later
+   * we use EVERYTHING in this call
+   * we are grabbing all the fields in all the tables we
+   * need and having airtable keep them up to date for us
+   *
+   * later, we can just call the relationship methods again
+   * in the background, those records will be loaded and will
+   * not throw exceptions when we try to use them
+   */
+  skuOrdersTrackings.forEach((sot: SkuOrderTracking) => {
+    sot.skuOrders(true).forEach((so: SkuOrder) => {
+      so.skus(true)
+      so.boxDestinations(true).forEach((bd: BoxDestination) => {
+        bd.boxes(true).forEach((box: Box) => {
+          box.boxLines(true)
+        })
+      })
+    })
   })
-
-  useRecords(schema.boxes.view.packableBoxes, {
-    fields: schema.boxes.allFields,
-  })
-
-  useRecords(schema.boxDestinations.table, {
-    fields: schema.boxDestinations.allFields,
-  })
-
-  useRecords(schema.boxes.table, {
-    fields: [schema.boxes.field.boxDestRel],
-  })
-
   return (
     <Provider store={store}>
       <ViewportConstraint minSize={{ width: 800 }} />

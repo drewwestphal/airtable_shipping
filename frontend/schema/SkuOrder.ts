@@ -1,6 +1,9 @@
 import Record from '@airtable/blocks/dist/types/src/models/record'
 import { WrappedRow, WrappedField, RelField } from './Airtable'
 import { Schema } from './Schema'
+import { Sku } from './Sku'
+import { BoxDestination } from './BoxDestination'
+import { Box } from '@airtable/blocks/ui'
 
 export class SkuOrder extends WrappedRow {
   // pk
@@ -22,8 +25,8 @@ export class SkuOrder extends WrappedRow {
   receivingNotes: WrappedField<string>
 
   constructor(schema: Schema, record: Record) {
-    super(schema.base, schema.skus.table, record)
-    let fields = schema.skus.field
+    super(schema, schema.skuOrders.table, record)
+    let fields = schema.skuOrders.field
     this.skuOrderPK = this.makeWrapped<string>(this.table.primaryField)
     // rels
     this.trackingNumberRel = this.makeWrapped<RelField<string>>(
@@ -44,5 +47,28 @@ export class SkuOrder extends WrappedRow {
     this.skuIsReceived = this.makeWrapped<boolean>(fields.skuIsReceived)
     this.destinationPrefix = this.makeWrapped<string>(fields.destinationPrefix)
     this.receivingNotes = this.makeWrapped<string>(fields.receivingNotes)
+  }
+
+  skus(shouldUseWithHook?: boolean): Array<Sku> {
+    return this.followRel(
+      this.skuRel,
+      this.schema.skus.allFields,
+      [],
+      (schema: Schema, record: Record) => {
+        return new SkuOrder(schema, record)
+      },
+      shouldUseWithHook
+    )
+  }
+  boxDestinations(shouldUseWithHook?: boolean): Array<BoxDestination> {
+    return this.followRel(
+      this.boxDestRel,
+      this.schema.boxDestinations.allFields,
+      [],
+      (schema: Schema, record: Record) => {
+        return new BoxDestination(schema, record)
+      },
+      shouldUseWithHook
+    )
   }
 }

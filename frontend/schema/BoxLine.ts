@@ -11,7 +11,7 @@ export class BoxLine extends WrappedRow {
   skuQty: WrappedField<number>
 
   constructor(schema: Schema, record: Record) {
-    super(schema.base, schema.boxLines.table, record)
+    super(schema, schema.boxLines.table, record)
     let fields = schema.boxLines.field
     this.boxLinePK = this.makeWrapped<RelField<string>>(this.table.primaryField)
     //rel

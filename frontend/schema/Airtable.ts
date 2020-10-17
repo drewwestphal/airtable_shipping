@@ -32,57 +32,56 @@ export class WrappedField<T> {
     return this.record.getCellValue(this.field) as T
   }
 }
-interface WrappedTableViews {
-  [index: string]: View
-}
-interface ATKeyVal {
-  [index: string]: Field
-}
-
 export abstract class WrappedRow {
+  schema: Schema
   base: Base
   table: Table
-  view: WrappedTableViews
   record: Record
-  static allFields: ATKeyVal
 
-  constructor(base: Base, table: Table, record: Record) {
-    this.base = base
+  constructor(schema: Schema, table: Table, record: Record) {
+    this.schema = schema
+    this.base = schema.base
     this.table = table
     this.record = record
-    this.view = {}
   }
-  followRel(
+
+  followRel<T extends WrappedRow>(
     relfield: WrappedField<RelField<any>>,
     fetchfields: Array<Field>,
-    relTable: Table,
-    sortsArr: any,
-    wrapFun: (base: Base, table: Table, record: Record) => Array<WrappedRow>
-  ) {
-    return this.record
-      .selectLinkedRecordsFromCell(relfield.field, {
+    sortsArr: Array<{ field: Field; direction: 'asc' | 'desc' }>,
+    wrapFun: (schema: Schema, record: Record) => T,
+    shouldUseWithHook?: boolean
+  ): any {
+    let recordQueryResult = this.record.selectLinkedRecordsFromCell(
+      relfield.field,
+      {
         fields: fetchfields,
         sorts: sortsArr,
-      })
-      .records.map((childRecord: Record) => {
-        return wrapFun(this.base, relTable, childRecord)
-      })
+      }
+    )
+    let recs = (shouldUseWithHook as boolean)
+      ? useRecords(recordQueryResult)
+      : recordQueryResult.records
+
+    //console.log(this)
+    //console.log(recs)
+    return recs.map((childRecord: Record) => {
+      return wrapFun(this.schema, childRecord) as T
+    })
   }
 
   protected makeWrapped<T>(field: Field): WrappedField<T> {
     let wf = new WrappedField<T>(this.table, field, this.record)
     return wf
   }
-
-  static useWrappedRecords(
+  protected static useWrappedRecords<T extends WrappedRow>(
     schema: Schema,
     tableOrView: Table | View,
     useRecordsQuery: any,
-    wrapFn: (schema: Schema, record: Record) => WrappedRow
-  ): Array<WrappedRow> {
-    // @ts-expect-error
+    wrapFn: (schema: Schema, record: Record) => T
+  ): Array<T> {
     return useRecords(tableOrView, useRecordsQuery).map((record: Record) => {
-      return wrapFn(schema, record)
+      return wrapFn(schema, record) as T
     })
   }
 }

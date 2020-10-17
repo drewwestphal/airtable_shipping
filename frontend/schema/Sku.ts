@@ -12,7 +12,7 @@ export class Sku extends WrappedRow {
   skuNameIsSerialTemplate: WrappedField<boolean>
 
   constructor(schema: Schema, record: Record) {
-    super(schema.base, schema.skus.table, record)
+    super(schema, schema.skus.table, record)
     let fields = schema.skus.field
     this.skuPk = this.makeWrapped<string>(this.table.primaryField)
     // rels

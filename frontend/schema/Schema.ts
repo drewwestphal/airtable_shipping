@@ -118,41 +118,6 @@ export class Schema {
       /**
        *
        *
-       * Boxes
-       *
-       *
-       */
-      let table = base.getTableByName('Boxes')
-      this.boxes = {
-        table: table,
-        view: {
-          packableBoxes: table.getViewByName(
-            'gtg_empty_toggled_penultimate_or_max_boxes'
-          ),
-          emptyBoxesOnly: table.getViewByName('gtg_empty_boxes_only'),
-        },
-        field: {
-          //pk
-          boxNumberPK: table.primaryField,
-          //rel
-          boxDestRel: table.getFieldByName('Onboard Destination'),
-          boxNumberOnly: table.getFieldByName('# Only'),
-          //data
-          isMaxBox: table.getFieldByName('gtg_is_max_box'),
-          isToggledForPacking: table.getFieldByName(
-            'gtg_is_user_toggled_for_packing'
-          ),
-          isPenultimateBox: table.getFieldByName('gtg_is_penultimate_box'),
-          isEmpty: table.getFieldByName('gtg_is_empty'),
-          notes: table.getFieldByName('Notes'),
-        },
-        allFields: [],
-      }
-    }
-    {
-      /**
-       *
-       *
        * Box Destinations
        *
        *
@@ -177,6 +142,42 @@ export class Schema {
           destinationPrefix: table.getFieldByName('Prefix'),
           boxOffset: table.getFieldByName('Box Offset'),
           isSerialBox: table.getFieldByName('Serial Box?'),
+        },
+        allFields: [],
+      }
+    }
+    {
+      /**
+       *
+       *
+       * Boxes
+       *
+       *
+       */
+      let table = base.getTableByName('Boxes')
+      this.boxes = {
+        table: table,
+        view: {
+          packableBoxes: table.getViewByName(
+            'gtg_empty_toggled_penultimate_or_max_boxes'
+          ),
+          emptyBoxesOnly: table.getViewByName('gtg_empty_boxes_only'),
+        },
+        field: {
+          //pk
+          boxNumberPK: table.primaryField,
+          //rel
+          boxDestRel: table.getFieldByName('Onboard Destination'),
+          boxLinesRel: table.getFieldByName('Constituent Box Lines'),
+          boxNumberOnly: table.getFieldByName('# Only'),
+          //data
+          isMaxBox: table.getFieldByName('gtg_is_max_box'),
+          isToggledForPacking: table.getFieldByName(
+            'gtg_is_user_toggled_for_packing'
+          ),
+          isPenultimateBox: table.getFieldByName('gtg_is_penultimate_box'),
+          isEmpty: table.getFieldByName('gtg_is_empty'),
+          notes: table.getFieldByName('Notes'),
         },
         allFields: [],
       }
