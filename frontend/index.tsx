@@ -6,13 +6,15 @@ import {
 import React from 'react'
 import { Provider } from 'react-redux'
 
-import { Schema } from './schema'
+import { Schema } from './airtable/Schema'
 import { store } from './store/store'
 import { SearchBar } from './components/SearchBar'
 import { TrackingRecords } from './components/TrackingRecords'
 import { SkuOrderRecords } from './components/SkuOrderRecords'
 import { ReceivingWorkflow } from './components/ReceivingWorkflow'
 import Record from '@airtable/blocks/dist/types/src/models/record'
+import { SkuOrderTrackingNumberRoot } from './airtable/SkuOrderTrackingNumber'
+import { PipelineState } from './components/ShowPipelineState'
 
 function App() {
   const schema = new Schema()
@@ -58,6 +60,15 @@ function App() {
     fields: [schema.boxes.field.boxDestRel],
   })
 
+  const skotnrs = skuOrdersTrackingRecords.map(function (
+    skuOrderTrackingRecord: Record
+  ): SkuOrderTrackingNumberRoot {
+    return new SkuOrderTrackingNumberRoot(
+      schema,
+      schema.skuOrdersTracking.table,
+      skuOrderTrackingRecord
+    )
+  })
   return (
     <Provider store={store}>
       <ViewportConstraint minSize={{ width: 800 }} />
@@ -74,6 +85,7 @@ function App() {
         boxDestinationRecords={boxDestinationRecords}
         boxRecordsOnlyDestLoaded={boxRecordsOnlyDestLoaded}
       />
+      <PipelineState schema={schema} skotnrs={skotnrs} />
     </Provider>
   )
 }

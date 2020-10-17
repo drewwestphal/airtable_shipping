@@ -1,6 +1,6 @@
 import { Button, CellRenderer, Dialog, Heading } from '@airtable/blocks/ui'
 import { connect } from 'react-redux'
-import { Schema } from '../schema'
+import { Schema } from '../airtable/Schema'
 import { ApplicationState } from '../store/reducer'
 import React from 'react'
 import {

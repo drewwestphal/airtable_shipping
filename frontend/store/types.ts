@@ -1,7 +1,8 @@
 import Field from '@airtable/blocks/dist/types/src/models/field'
 import Record from '@airtable/blocks/dist/types/src/models/record'
 import Table from '@airtable/blocks/dist/types/src/models/table'
-import { Schema } from '../schema'
+import { Schema } from '../airtable/Schema'
+import { BoxWrapper } from '../airtable/RecordWrappers'
 
 export enum TrackingDisplayChoice {
   OnlySearch,
@@ -16,12 +17,10 @@ export interface PersistFieldToRecordArgs {
   val: any
 }
 export interface PotentialBoxesForReceiving {
-  extantMaxBox: Record | null
-  maxBoxIsEmpty: boolean
-  extantPenultimateBox: Record | null
-  penultimateBoxIsEmpty: boolean
-  extantEmptyNonMaxBoxes: Array<Record>
-  extantNonEmptyUserSelectedBoxes: Array<Record>
+  extantMaxBox: BoxWrapper | null
+  extantPenultimateBox: BoxWrapper | null
+  extantEmptyNonMaxBoxes: Array<BoxWrapper>
+  extantNonEmptyUserSelectedBoxes: Array<BoxWrapper>
   maxBoxToMake: BoxToMake | null
 }
 export interface BoxToMake {

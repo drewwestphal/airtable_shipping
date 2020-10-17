@@ -15,7 +15,7 @@ import {
   persistValueToRecordField,
   trackingDisplayChoiceDidChange,
 } from '../store/actions'
-import { Schema } from '../schema'
+import { Schema } from '../airtable/Schema'
 import Record from '@airtable/blocks/dist/types/src/models/record'
 import { ApplicationState } from '../store/reducer'
 import moment from 'moment'
