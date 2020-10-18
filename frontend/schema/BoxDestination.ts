@@ -1,43 +1,37 @@
 import Record from '@airtable/blocks/dist/types/src/models/record'
-import { WrappedRow, WrappedField, RelField } from './Airtable'
+import { HydratedRow, HydratedWrappedField, RelField } from './Airtable'
 import { Schema } from './Schema'
 import { Box } from './Box'
 
-export class BoxDestination extends WrappedRow {
-  //pk
-  boxDestNamePK: WrappedField<string>
-  //rel
-  boxesRel: WrappedField<RelField<string>>
-  //data
-  currentMaximalBoxNumber: WrappedField<number>
-  destinationPrefix: WrappedField<string>
-  boxOffset: WrappedField<number>
-  isSerialBox: WrappedField<boolean>
+export class BoxDestination extends HydratedRow {
+  boxDestNamePK: HydratedWrappedField<string>
+  boxesRel: HydratedWrappedField<RelField<string>>
+  currentMaximalBoxNumber: HydratedWrappedField<number>
+  destinationPrefix: HydratedWrappedField<string>
+  boxOffset: HydratedWrappedField<number>
+  isSerialBox: HydratedWrappedField<boolean>
 
   constructor(schema: Schema, record: Record) {
     super(schema, schema.boxDestinations.table, record)
-    let fields = schema.boxDestinations.field
-    //pk
-    this.boxDestNamePK = this.makeWrapped<string>(fields.boxDestNamePK)
-    //rel
-    this.boxesRel = this.makeWrapped<RelField<string>>(fields.boxesRel)
-    //data
-    this.currentMaximalBoxNumber = this.makeWrapped<number>(
-      fields.currentMaximalBoxNumber
+
+    this.boxDestNamePK = schema.boxDestinations.boxDestNamePK.hydrate(record)
+    this.boxesRel = schema.boxDestinations.boxesRel.hydrate(record)
+    this.currentMaximalBoxNumber = schema.boxDestinations.currentMaximalBoxNumber.hydrate(
+      record
     )
-    this.destinationPrefix = this.makeWrapped<string>(fields.destinationPrefix)
-    this.boxOffset = this.makeWrapped<number>(fields.boxOffset)
-    this.isSerialBox = this.makeWrapped<boolean>(fields.isSerialBox)
+    this.destinationPrefix = schema.boxDestinations.destinationPrefix.hydrate(
+      record
+    )
+    this.boxOffset = schema.boxDestinations.boxOffset.hydrate(record)
+    this.isSerialBox = schema.boxDestinations.isSerialBox.hydrate(record)
   }
 
   boxes(shouldUseWithHook?: boolean): Array<Box> {
-    return this.followRel(
+    return Box.followRelTowardMe(
+      this.schema,
       this.boxesRel,
       this.schema.boxes.allFields,
       [],
-      (schema: Schema, record: Record) => {
-        return new Box(schema, record)
-      },
       shouldUseWithHook
     )
   }

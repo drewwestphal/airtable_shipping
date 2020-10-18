@@ -1,44 +1,37 @@
 import Record from '@airtable/blocks/dist/types/src/models/record'
-import { WrappedRow, WrappedField, RelField } from './Airtable'
+import { HydratedRow, HydratedWrappedField, RelField } from './Airtable'
 import { Schema } from './Schema'
 import { BoxLine } from './BoxLine'
-export class Box extends WrappedRow {
-  boxNumberPK: WrappedField<string>
-  //rel
-  boxDestRel: WrappedField<RelField<string>>
-  boxLinesRel: WrappedField<RelField<string>>
-  boxNumberOnly: WrappedField<string>
-  //data
-  isMaxBox: WrappedField<boolean>
-  isToggledForPacking: WrappedField<boolean>
-  isPenultimateBox: WrappedField<boolean>
-  isEmpty: WrappedField<boolean>
-  notes: WrappedField<string>
+
+export class Box extends HydratedRow {
+  boxNumberPK: HydratedWrappedField<string>
+  boxLinesRel: HydratedWrappedField<RelField<string>>
+  boxDestRel: HydratedWrappedField<RelField<string>>
+  boxNumberOnly: HydratedWrappedField<string>
+  isMaxBox: HydratedWrappedField<boolean>
+  isToggledForPacking: HydratedWrappedField<boolean>
+  isPenultimateBox: HydratedWrappedField<boolean>
+  isEmpty: HydratedWrappedField<boolean>
 
   constructor(schema: Schema, record: Record) {
     super(schema, schema.boxes.table, record)
-    let fields = schema.boxes.field
-    this.boxNumberPK = this.makeWrapped<string>(fields.primaryField)
-    this.boxDestRel = this.makeWrapped<RelField<string>>(fields.boxDestRel)
-    this.boxLinesRel = this.makeWrapped<RelField<string>>(fields.boxLinesRel)
-    this.boxNumberOnly = this.makeWrapped<string>(fields.boxNumberOnly)
-    this.isMaxBox = this.makeWrapped<boolean>(fields.isMaxBox)
-    this.isToggledForPacking = this.makeWrapped<boolean>(
-      fields.isToggledForPacking
-    )
-    this.isPenultimateBox = this.makeWrapped<boolean>(fields.isPenultimateBox)
-    this.isEmpty = this.makeWrapped<boolean>(fields.isEmpty)
-    this.notes = this.makeWrapped<string>(fields.notes)
+
+    this.boxNumberPK = schema.boxes.boxNumberPK.hydrate(record)
+    this.boxLinesRel = schema.boxes.boxLinesRel.hydrate(record)
+    this.boxDestRel = schema.boxes.boxDestRel.hydrate(record)
+    this.boxNumberOnly = schema.boxes.boxNumberOnly.hydrate(record)
+    this.isMaxBox = schema.boxes.isMaxBox.hydrate(record)
+    this.isToggledForPacking = schema.boxes.isToggledForPacking.hydrate(record)
+    this.isPenultimateBox = schema.boxes.isPenultimateBox.hydrate(record)
+    this.isEmpty = schema.boxes.isEmpty.hydrate(record)
   }
 
   boxLines(shouldUseWithHook?: boolean): Array<BoxLine> {
-    return this.followRel(
+    return BoxLine.followRelTowardMe(
+      this.schema,
       this.boxLinesRel,
       this.schema.boxLines.allFields,
       [],
-      (schema: Schema, record: Record) => {
-        return new BoxLine(schema, record)
-      },
       shouldUseWithHook
     )
   }

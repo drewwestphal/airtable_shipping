@@ -1,0 +1,2 @@
+## About this dir
+These files were a real pain in the ass to generate. Use the spreadsheet. I was really trying to get everything to be typed and usable and available to autocomplete... and to sketch out how to build something more on top of this. I hope it's like useful in the future because I burned a lotta hours making something that was ... sorta sensible in my mind?

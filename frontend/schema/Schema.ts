@@ -1,249 +1,321 @@
-import Base from '@airtable/blocks/dist/types/src/models/base'
 import Field from '@airtable/blocks/dist/types/src/models/field'
+
 import Table from '@airtable/blocks/dist/types/src/models/table'
 import View from '@airtable/blocks/dist/types/src/models/view'
 import { useBase } from '@airtable/blocks/ui'
-export class WrappedField<T> {
-  field: Field
-  table: Table
-  record: Record
-  constructor(table: Table, field: Field, record: Record) {
-    this.table = table
-    this.field = field
-    this.record = record
-  }
-  fieldId(): string {
-    return this.field.id
-  }
-  stringVal(): string {
-    return this.record.getCellValueAsString(this.field)
-  }
-  val(): T {
-    return this.record.getCellValue(this.field) as T
-  }
-}
-export class Schema {
-  base: Base
-  skuOrdersTracking: SchemaTable
-  skuOrders: SchemaTable
-  skus: SchemaTable
-  boxes: SchemaTable
-  boxDestinations: SchemaTable
-  boxLines: SchemaTable
+import { Moment } from 'moment'
+import { WrappedField, RelField } from './Airtable'
 
+/**
+ * This file comes from the excel sheet in this repo
+ *
+ * The yellow column generates the typedef and the far right green column
+ * generates the body of construct.
+ *
+ * Note that the code in the sheet is fine except for view generation which
+ * is totally hacked since we only use one.
+ */
+export class Schema {
+  skuOrdersTracking: {
+    table: Table
+    view: { hasTrackingNumber: View }
+    trackingNumberPK: WrappedField<string>
+    skuOrdersRel: WrappedField<RelField<string>>
+    isReceivedRO: WrappedField<boolean>
+    receivedAtDateTime: WrappedField<Moment>
+    receivingNotes: WrappedField<string>
+    warehouseNotes: WrappedField<string>
+    allFields: Array<Field>
+  }
+  skuOrders: {
+    table: Table
+    skuOrderPK: WrappedField<string>
+    trackingNumberRel: WrappedField<RelField<string>>
+    orderRel: WrappedField<RelField<string>>
+    skuRel: WrappedField<RelField<string>>
+    boxDestRel: WrappedField<RelField<string>>
+    quantityExpected: WrappedField<number>
+    quantityReceived: WrappedField<number>
+    quantityPacked: WrappedField<number>
+    boxedCheckbox: WrappedField<boolean>
+    externalProductName: WrappedField<string>
+    skuIsReceived: WrappedField<boolean>
+    destinationPrefix: WrappedField<string>
+    receivingNotes: WrappedField<string>
+    allFields: Array<Field>
+  }
+  skus: {
+    table: Table
+    skuPk: WrappedField<string>
+    serialNumber: WrappedField<string>
+    isSerialRequired: WrappedField<boolean>
+    lifetimeOrderQty: WrappedField<number>
+    allFields: Array<Field>
+  }
+  boxDestinations: {
+    table: Table
+    boxDestNamePK: WrappedField<string>
+    boxesRel: WrappedField<RelField<string>>
+    currentMaximalBoxNumber: WrappedField<number>
+    destinationPrefix: WrappedField<string>
+    boxOffset: WrappedField<number>
+    isSerialBox: WrappedField<boolean>
+    allFields: Array<Field>
+  }
+  boxes: {
+    table: Table
+    boxNumberPK: WrappedField<string>
+    boxLinesRel: WrappedField<RelField<string>>
+    boxDestRel: WrappedField<RelField<string>>
+    boxNumberOnly: WrappedField<string>
+    isMaxBox: WrappedField<boolean>
+    isToggledForPacking: WrappedField<boolean>
+    isPenultimateBox: WrappedField<boolean>
+    isEmpty: WrappedField<boolean>
+    allFields: Array<Field>
+  }
+  boxLines: {
+    table: Table
+    boxLinePK: WrappedField<string>
+    boxRel: WrappedField<RelField<string>>
+    skuRel: WrappedField<RelField<string>>
+    skuOrderRel: WrappedField<RelField<string>>
+    skuQty: WrappedField<number>
+    allFields: Array<Field>
+  }
   constructor() {
     const base = useBase()
-    this.base = base
-    {
-      /**
-       *
-       *
-       * SKU Orders Tracking
-       *
-       *
-       */
-      let table = base.getTableByName('SKU Orders Tracking')
-      this.skuOrdersTracking = {
-        table: table,
-        view: {
-          hasTrackingNumber: table.getViewByName(
-            'gtg_searchable_tracking_numbers'
-          ),
-        },
-        field: {
-          //pk
-          trackingNumberPK: table.primaryField,
-          //rel
-          skuOrdersRel: table.getFieldByName('SKU Orders'),
-          //data
-          isReceivedRO: table.getFieldByName(
-            'gtg_was_tracking_number_received'
-          ),
-          receivedAtDateTime: table.getFieldByName('Date Received'),
-          receivingNotes: table.getFieldByName('Receiving Notes (JoCo)'),
-          warehouseNotes: table.getFieldByName('Warehouse Notes (GTG)'),
-        },
-        allFields: [],
-      }
+
+    this.skuOrdersTracking = {
+      table: base.getTableByName('SKU Orders Tracking'),
+      view: {
+        hasTrackingNumber: base
+          .getTableByName('SKU Orders Tracking')
+          .getViewByName('gtg_searchable_tracking_numbers'),
+      },
+      trackingNumberPK: new WrappedField<string>(
+        base.getTableByName('SKU Orders Tracking'),
+        base.getTableByName('SKU Orders Tracking').primaryField
+      ),
+      skuOrdersRel: new WrappedField<RelField<string>>(
+        base.getTableByName('SKU Orders Tracking'),
+        base.getTableByName('SKU Orders Tracking').getFieldByName('SKU Orders')
+      ),
+      isReceivedRO: new WrappedField<boolean>(
+        base.getTableByName('SKU Orders Tracking'),
+        base
+          .getTableByName('SKU Orders Tracking')
+          .getFieldByName('gtg_was_tracking_number_received')
+      ),
+      receivedAtDateTime: new WrappedField<Moment>(
+        base.getTableByName('SKU Orders Tracking'),
+        base
+          .getTableByName('SKU Orders Tracking')
+          .getFieldByName('Date Received')
+      ),
+      receivingNotes: new WrappedField<string>(
+        base.getTableByName('SKU Orders Tracking'),
+        base
+          .getTableByName('SKU Orders Tracking')
+          .getFieldByName('Receiving Notes (JoCo)')
+      ),
+      warehouseNotes: new WrappedField<string>(
+        base.getTableByName('SKU Orders Tracking'),
+        base
+          .getTableByName('SKU Orders Tracking')
+          .getFieldByName('Warehouse Notes (GTG)')
+      ),
+      allFields: [],
     }
-    {
-      /**
-       *
-       *
-       * Sku Orders
-       *
-       *
-       */
-      let table = base.getTableByName('SKU Orders')
-      this.skuOrders = {
-        table: table,
-        view: {
-          hasTrackingNumber: table.getViewByName('gtg_has_tracking_number'),
-        },
-        field: {
-          // pk
-          skuOrderPK: table.primaryField,
-          // rels
-          trackingNumberRel: table.getFieldByName('Tracking Number'),
-          orderRel: table.getFieldByName('Order'),
-          skuRel: table.getFieldByName('SKU'),
-          boxDestRel: table.getFieldByName('Onboard Destination'),
-          // data
-          //trackingNumberReceived: table.getFieldByName('Tracking # Received?'),
-          quantityExpected: table.getFieldByName('Quantity Ordered'),
-          quantityReceived: table.getFieldByName('Quantity Received'),
-          quantityPacked: table.getFieldByName('gtg_packed_qty'),
-          boxedCheckbox: table.getFieldByName('Boxed?'),
-          externalProductName: table.getFieldByName('External Product Name'),
-          skuIsReceived: table.getFieldByName('SKU Received?'),
-          destinationPrefix: table.getFieldByName('gtg_dest_prefix'),
-          receivingNotes: table.getFieldByName('SKU Receiving Notes'),
-        },
-        allFields: [],
-      }
+    this.skuOrders = {
+      table: base.getTableByName('SKU Orders'),
+      skuOrderPK: new WrappedField<string>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').primaryField
+      ),
+      trackingNumberRel: new WrappedField<RelField<string>>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('Tracking Number')
+      ),
+      orderRel: new WrappedField<RelField<string>>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('Order')
+      ),
+      skuRel: new WrappedField<RelField<string>>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('SKU')
+      ),
+      boxDestRel: new WrappedField<RelField<string>>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('Onboard Destination')
+      ),
+      quantityExpected: new WrappedField<number>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('Quantity Ordered')
+      ),
+      quantityReceived: new WrappedField<number>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('Quantity Received')
+      ),
+      quantityPacked: new WrappedField<number>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('gtg_packed_qty')
+      ),
+      boxedCheckbox: new WrappedField<boolean>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('Boxed?')
+      ),
+      externalProductName: new WrappedField<string>(
+        base.getTableByName('SKU Orders'),
+        base
+          .getTableByName('SKU Orders')
+          .getFieldByName('External Product Name')
+      ),
+      skuIsReceived: new WrappedField<boolean>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('SKU Received?')
+      ),
+      destinationPrefix: new WrappedField<string>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('gtg_dest_prefix')
+      ),
+      receivingNotes: new WrappedField<string>(
+        base.getTableByName('SKU Orders'),
+        base.getTableByName('SKU Orders').getFieldByName('SKU Receiving Notes')
+      ),
+      allFields: [],
     }
-    {
-      /**
-       *
-       *
-       * Sku Orders
-       *
-       *
-       */
-      let table = base.getTableByName('SKUs')
-      this.skus = {
-        table: table,
-        view: {
-          serialsRequired: table.getViewByName('gtg_serial_number_skus'),
-        },
-        field: {
-          // pk
-          skuPk: table.primaryField,
-          // rels
-          // data
-          //trackingNumberReceived: table.getFieldByName('Tracking # Received?'),
-          serialNumber: table.getFieldByName('Serial Number'),
-          isSerialRequired: table.getFieldByName('gtg_is_serial_required'),
-          lifetimeOrderQty: table.getFieldByName('gtg_lifetime_ordered_qty'),
-          skuNameIsSerialTemplate: table.getFieldByName(
-            'gtg_is_sku_name_a_serial_template_name'
-          ),
-        },
-        allFields: [],
-      }
+    this.skus = {
+      table: base.getTableByName('SKUs'),
+      skuPk: new WrappedField<string>(
+        base.getTableByName('SKUs'),
+        base.getTableByName('SKUs').primaryField
+      ),
+      serialNumber: new WrappedField<string>(
+        base.getTableByName('SKUs'),
+        base.getTableByName('SKUs').getFieldByName('Serial Number')
+      ),
+      isSerialRequired: new WrappedField<boolean>(
+        base.getTableByName('SKUs'),
+        base.getTableByName('SKUs').getFieldByName('gtg_is_serial_required')
+      ),
+      lifetimeOrderQty: new WrappedField<number>(
+        base.getTableByName('SKUs'),
+        base.getTableByName('SKUs').getFieldByName('gtg_lifetime_ordered_qty')
+      ),
+      allFields: [],
     }
-    {
-      /**
-       *
-       *
-       * Box Destinations
-       *
-       *
-       */
-      let table = base.getTableByName('Box Destinations')
-      this.boxDestinations = {
-        table: table,
-        view: {
-          destNeedsEmptyMaxBox: table.getViewByName(
-            'gtg_dest_needs_empty_max_box'
-          ),
-        },
-        field: {
-          //pk
-          boxDestNamePK: table.primaryField,
-          //rel
-          boxesRel: table.getFieldByName('Boxes'),
-          //data
-          currentMaximalBoxNumber: table.getFieldByName(
-            'Current Maximal Box #'
-          ),
-          destinationPrefix: table.getFieldByName('Prefix'),
-          boxOffset: table.getFieldByName('Box Offset'),
-          isSerialBox: table.getFieldByName('Serial Box?'),
-        },
-        allFields: [],
-      }
+    this.boxDestinations = {
+      table: base.getTableByName('Box Destinations'),
+      boxDestNamePK: new WrappedField<string>(
+        base.getTableByName('Box Destinations'),
+        base.getTableByName('Box Destinations').primaryField
+      ),
+      boxesRel: new WrappedField<RelField<string>>(
+        base.getTableByName('Box Destinations'),
+        base.getTableByName('Box Destinations').getFieldByName('Boxes')
+      ),
+      currentMaximalBoxNumber: new WrappedField<number>(
+        base.getTableByName('Box Destinations'),
+        base
+          .getTableByName('Box Destinations')
+          .getFieldByName('Current Maximal Box #')
+      ),
+      destinationPrefix: new WrappedField<string>(
+        base.getTableByName('Box Destinations'),
+        base.getTableByName('Box Destinations').getFieldByName('Prefix')
+      ),
+      boxOffset: new WrappedField<number>(
+        base.getTableByName('Box Destinations'),
+        base.getTableByName('Box Destinations').getFieldByName('Box Offset')
+      ),
+      isSerialBox: new WrappedField<boolean>(
+        base.getTableByName('Box Destinations'),
+        base.getTableByName('Box Destinations').getFieldByName('Serial Box?')
+      ),
+      allFields: [],
     }
-    {
-      /**
-       *
-       *
-       * Boxes
-       *
-       *
-       */
-      let table = base.getTableByName('Boxes')
-      this.boxes = {
-        table: table,
-        view: {
-          packableBoxes: table.getViewByName(
-            'gtg_empty_toggled_penultimate_or_max_boxes'
-          ),
-          emptyBoxesOnly: table.getViewByName('gtg_empty_boxes_only'),
-        },
-        field: {
-          //pk
-          boxNumberPK: table.primaryField,
-          //rel
-          boxDestRel: table.getFieldByName('Onboard Destination'),
-          boxLinesRel: table.getFieldByName('Constituent Box Lines'),
-          boxNumberOnly: table.getFieldByName('# Only'),
-          //data
-          isMaxBox: table.getFieldByName('gtg_is_max_box'),
-          isToggledForPacking: table.getFieldByName(
-            'gtg_is_user_toggled_for_packing'
-          ),
-          isPenultimateBox: table.getFieldByName('gtg_is_penultimate_box'),
-          isEmpty: table.getFieldByName('gtg_is_empty'),
-          notes: table.getFieldByName('Notes'),
-        },
-        allFields: [],
-      }
+    this.boxes = {
+      table: base.getTableByName('Boxes'),
+      boxNumberPK: new WrappedField<string>(
+        base.getTableByName('Boxes'),
+        base.getTableByName('Boxes').primaryField
+      ),
+      boxLinesRel: new WrappedField<RelField<string>>(
+        base.getTableByName('Boxes'),
+        base.getTableByName('Boxes').getFieldByName('Constituent Box Lines')
+      ),
+      boxDestRel: new WrappedField<RelField<string>>(
+        base.getTableByName('Boxes'),
+        base.getTableByName('Boxes').getFieldByName('Onboard Destination')
+      ),
+      boxNumberOnly: new WrappedField<string>(
+        base.getTableByName('Boxes'),
+        base.getTableByName('Boxes').getFieldByName('# Only')
+      ),
+      isMaxBox: new WrappedField<boolean>(
+        base.getTableByName('Boxes'),
+        base.getTableByName('Boxes').getFieldByName('gtg_is_max_box')
+      ),
+      isToggledForPacking: new WrappedField<boolean>(
+        base.getTableByName('Boxes'),
+        base
+          .getTableByName('Boxes')
+          .getFieldByName('gtg_is_user_toggled_for_packing')
+      ),
+      isPenultimateBox: new WrappedField<boolean>(
+        base.getTableByName('Boxes'),
+        base.getTableByName('Boxes').getFieldByName('gtg_is_penultimate_box')
+      ),
+      isEmpty: new WrappedField<boolean>(
+        base.getTableByName('Boxes'),
+        base.getTableByName('Boxes').getFieldByName('gtg_is_empty')
+      ),
+      allFields: [],
     }
-    {
-      /**
-       *
-       *
-       * Box Lines
-       *
-       *
-       */
-      let table = base.getTableByName('Box Lines')
-      this.boxLines = {
-        table: table,
-        view: {},
-        field: {
-          //pk
-          boxLinePK: table.primaryField,
-          //rel
-          boxRel: table.getFieldByName('Box #'),
-          skuRel: table.getFieldByName('SKU'),
-          skuOrderRel: table.getFieldByName('SKU Order'),
-          //data
-          skuQty: table.getFieldByName('SKU Qty'),
-        },
-        allFields: [],
-      }
+    this.boxLines = {
+      table: base.getTableByName('Box Lines'),
+      boxLinePK: new WrappedField<string>(
+        base.getTableByName('Box Lines'),
+        base.getTableByName('Box Lines').primaryField
+      ),
+      boxRel: new WrappedField<RelField<string>>(
+        base.getTableByName('Box Lines'),
+        base.getTableByName('Box Lines').getFieldByName('Box #')
+      ),
+      skuRel: new WrappedField<RelField<string>>(
+        base.getTableByName('Box Lines'),
+        base.getTableByName('Box Lines').getFieldByName('SKU')
+      ),
+      skuOrderRel: new WrappedField<RelField<string>>(
+        base.getTableByName('Box Lines'),
+        base.getTableByName('Box Lines').getFieldByName('SKU Order')
+      ),
+      skuQty: new WrappedField<number>(
+        base.getTableByName('Box Lines'),
+        base.getTableByName('Box Lines').getFieldByName('SKU Qty')
+      ),
+      allFields: [],
     }
-    for (const [key, schemaTable] of Object.entries(this)) {
-      if (key !== 'base') {
-        // it's a Schema Table
-        schemaTable.allFields = Object.values(schemaTable.field)
+    /**
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     */
+
+    for (const [tableName, props] of Object.entries(this)) {
+      // it's a Schema Table
+      for (const [fieldName, fieldObjProbably] of Object.entries(props)) {
+        if (!['allFields', 'table', 'view'].includes(fieldName)) {
+          //@ts-expect-error
+          this[tableName].allFields.push(fieldObjProbably.field)
+        }
       }
     }
   }
-}
-interface SchemaTable {
-  table: Table
-  view: SchemaTableViews
-  field: SchemaTableFields
-  allFields: Array<Field>
-}
-
-interface SchemaTableViews {
-  [index: string]: View
-}
-
-interface SchemaTableFields {
-  [index: string]: Field
 }

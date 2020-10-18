@@ -1,4 +1,3 @@
-import Base from '@airtable/blocks/dist/types/src/models/base'
 import Field from '@airtable/blocks/dist/types/src/models/field'
 import Record from '@airtable/blocks/dist/types/src/models/record'
 import Table from '@airtable/blocks/dist/types/src/models/table'
@@ -16,43 +15,62 @@ import { Schema } from './Schema'
 export class WrappedField<T> {
   field: Field
   table: Table
-  record: Record
-  constructor(table: Table, field: Field, record: Record) {
+  constructor(table: Table, field: Field) {
     this.table = table
     this.field = field
-    this.record = record
   }
-  fieldId(): string {
-    return this.field.id
-  }
-  stringVal(): string {
-    return this.record.getCellValueAsString(this.field)
-  }
-  val(): T {
-    return this.record.getCellValue(this.field) as T
+  hydrate(record: Record): HydratedWrappedField<T> {
+    return {
+      field: this.field,
+      record: record,
+      stringVal: () => record.getCellValueAsString(this.field),
+      val: () => record.getCellValue(this.field) as T,
+      updateAsync: (val: T) =>
+        this.table.updateRecordAsync(record, { [this.field.id]: val }),
+    }
   }
 }
-export abstract class WrappedRow {
+export interface HydratedWrappedField<T> {
+  record: Record
+  field: Field
+  stringVal: () => string
+  val: () => T
+  updateAsync: (val: T) => Promise<void>
+}
+
+export type StaticThis<T> = { new (schema: Schema, record: Record): T }
+export abstract class HydratedRow {
   schema: Schema
-  base: Base
   table: Table
   record: Record
 
   constructor(schema: Schema, table: Table, record: Record) {
     this.schema = schema
-    this.base = schema.base
     this.table = table
     this.record = record
   }
 
-  followRel<T extends WrappedRow>(
-    relfield: WrappedField<RelField<any>>,
+  // https://stackoverflow.com/a/45262288
+  // this takes the wrong arguments for the base class and
+  // the right ones for all the children...the type also sorta
+  // protects u as much as that really happens in "typescript"
+  static create<T extends HydratedRow>(
+    this: StaticThis<T>,
+    schema: Schema,
+    record: Record
+  ): T {
+    const that = Object.assign(new this(schema, record))
+    return that
+  }
+
+  public static followRelTowardMe<T extends HydratedRow>(
+    schema: Schema,
+    relfield: HydratedWrappedField<RelField<any>>,
     fetchfields: Array<Field>,
     sortsArr: Array<{ field: Field; direction: 'asc' | 'desc' }>,
-    wrapFun: (schema: Schema, record: Record) => T,
     shouldUseWithHook?: boolean
-  ): any {
-    let recordQueryResult = this.record.selectLinkedRecordsFromCell(
+  ): Array<T> {
+    let recordQueryResult = relfield.record.selectLinkedRecordsFromCell(
       relfield.field,
       {
         fields: fetchfields,
@@ -66,22 +84,20 @@ export abstract class WrappedRow {
     //console.log(this)
     //console.log(recs)
     return recs.map((childRecord: Record) => {
-      return wrapFun(this.schema, childRecord) as T
+      // @ts-expect-error
+      return this.create(schema, childRecord) as T
     })
   }
 
-  protected makeWrapped<T>(field: Field): WrappedField<T> {
-    let wf = new WrappedField<T>(this.table, field, this.record)
-    return wf
-  }
-  protected static useWrappedRecords<T extends WrappedRow>(
+  public static useWrappedRecords<T extends HydratedRow>(
+    this: StaticThis<T>,
     schema: Schema,
     tableOrView: Table | View,
-    useRecordsQuery: any,
-    wrapFn: (schema: Schema, record: Record) => T
+    useRecordsQuery: any
   ): Array<T> {
     return useRecords(tableOrView, useRecordsQuery).map((record: Record) => {
-      return wrapFn(schema, record) as T
+      // @ts-expect-error
+      return this.create(schema, record)
     })
   }
 }
