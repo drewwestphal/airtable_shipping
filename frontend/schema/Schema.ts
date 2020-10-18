@@ -3,7 +3,25 @@ import Field from '@airtable/blocks/dist/types/src/models/field'
 import Table from '@airtable/blocks/dist/types/src/models/table'
 import View from '@airtable/blocks/dist/types/src/models/view'
 import { useBase } from '@airtable/blocks/ui'
-
+export class WrappedField<T> {
+  field: Field
+  table: Table
+  record: Record
+  constructor(table: Table, field: Field, record: Record) {
+    this.table = table
+    this.field = field
+    this.record = record
+  }
+  fieldId(): string {
+    return this.field.id
+  }
+  stringVal(): string {
+    return this.record.getCellValueAsString(this.field)
+  }
+  val(): T {
+    return this.record.getCellValue(this.field) as T
+  }
+}
 export class Schema {
   base: Base
   skuOrdersTracking: SchemaTable

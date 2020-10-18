@@ -53,7 +53,7 @@ export class SkuOrderTracking extends WrappedRow {
       tableOrView,
       useRecordsQuery,
       (schema: Schema, record: Record) => {
-        return new SkuOrderTracking(schema, record)
+        return new this(schema, record)
       }
     )
   }
